@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pymongo
+python-dotenv
+bcrypt==4.0.1
+PyJWT
+python-multipart
+passlib[bcrypt]
+cloudinary
+email-validator
+twilio
