@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from src.controllers.auth import router as auth_router
 from src.controllers.employer import router as employer_router
 from src.controllers.slider import router as slider_router
@@ -9,9 +10,13 @@ from src.controllers.fill_profile import router as fill_profile_router
 app = FastAPI(
     title="Jobber City API",
     description="Jobber City API for job seekers and employers",
-    version="1.0.0"
+    swagger_ui_parameters={"docExpansion": "none"}
 )
 
+# redirect root URL -> /docs
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
 
 
 app.include_router(auth_router)
