@@ -29,18 +29,12 @@ class CambodianCity(str, Enum):
     TBOUNG_KHMUM = "Tboung Khmum"
 
 class LocationSelection(BaseModel):
-    # ប្រើសម្រាប់ POST (បង្កើតថ្មី)
     city: CambodianCity = Field(..., description="Select a city in Cambodia")
 
 class LocationUpdate(BaseModel):
-    # ប្រើសម្រាប់ PUT (កែប្រែ)
     city: CambodianCity = Field(..., description="Update to a new city in Cambodia")
-
-
-
 class CityCreate(BaseModel):
     city_name: str = Field(..., min_length=2, max_length=100)
-
 
 class CityUpdate(BaseModel):
     city_name: str = Field(..., min_length=2, max_length=100)

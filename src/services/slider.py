@@ -49,7 +49,7 @@ def get_all_sliders_service() -> dict:
         # Find active sliders and sort by order
         sliders = list(slider_col.find(
             {"is_active": True},
-            {"_id": 0}  # Exclude MongoDB _id
+            {"_id": 0} 
         ).sort("order", 1))
         
         return {
@@ -157,8 +157,7 @@ def delete_slider_service(slider_id: str) -> dict:
         from bson import ObjectId
         
         slider_col = collections("sliders")
-        
-        # Get slider before deletion to remove image from Cloudinary
+
         slider = slider_col.find_one({"_id": ObjectId(slider_id)})
         if not slider:
             return {
@@ -166,13 +165,13 @@ def delete_slider_service(slider_id: str) -> dict:
                 "message": "Slider not found"
             }
         
-        # Delete image from Cloudinary
+
         if slider.get("image_public_id"):
             delete_result = delete_image(slider["image_public_id"])
             if not delete_result["success"]:
                 print(f"Warning: Failed to delete image from Cloudinary: {delete_result.get('message')}")
         
-        # Delete slider from database
+ 
         result = slider_col.delete_one({"_id": ObjectId(slider_id)})
         
         if result.deleted_count > 0:

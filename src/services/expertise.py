@@ -1,10 +1,8 @@
 from datetime import datetime
 from bson import ObjectId
-# 📝 ហៅ collections ចេញពីឯកសារ config របស់បង
 from src.config.mongo import collections 
 
 def get_all_expertises_service() -> list:
-    """[GET] ទាញយក Expertise ទាំងអស់ពី MongoDB"""
     try:
         expertise_col = collections("Expertise")
         stored_expertises = expertise_col.find({"is_active": True})
@@ -14,7 +12,7 @@ def get_all_expertises_service() -> list:
         return []
 
 def store_validated_expertise_service(expertise_name: str) -> dict:
-    """[POST] បញ្ចូល Expertise ថ្មីទៅក្នុង database"""
+
     try: 
         expertise_col = collections("Expertise")
         
@@ -27,7 +25,7 @@ def store_validated_expertise_service(expertise_name: str) -> dict:
             }
 
         expertise_data = {
-            "expertise_name": expertise_name, # ✅ កែពីចាស់ឱ្យត្រូវនឹងឈ្មោះ Parameter 
+            "expertise_name": expertise_name, 
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
             "is_active": True
@@ -43,7 +41,6 @@ def store_validated_expertise_service(expertise_name: str) -> dict:
         return {"success": False, "message": f"Database Error: {str(e)}"}
 
 def update_expertise_service(exp_id: str, new_expertise_name: str) -> dict:
-    """[PUT] កែប្រែឈ្មោះ Expertise តាមរយៈ ID"""
     try:
         expertise_col = collections("Expertise")
         result = expertise_col.update_one(
@@ -60,7 +57,6 @@ def update_expertise_service(exp_id: str, new_expertise_name: str) -> dict:
         return {"success": False, "message": f"Database Error: {str(e)}"}
 
 def delete_expertise_service(exp_id: str) -> dict:
-    """[DELETE] លុប Expertise ចេញពី Database តាមរយៈ ID"""
     try:
         expertise_col = collections("Expertise")
         result = expertise_col.delete_one({"_id": ObjectId(exp_id)})

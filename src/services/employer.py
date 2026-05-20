@@ -3,10 +3,8 @@ from bson import ObjectId, errors
 from src.config.mongo import collections
 
 def insert_job(job_data: dict):
-    """Create a new job posting"""
     job_col = collections("jobs")
     
-    # Add timestamps
     job_data["created_at"] = datetime.now()
     job_data["updated_at"] = datetime.now()
     job_data["is_active"] = True
@@ -22,7 +20,6 @@ def insert_job(job_data: dict):
     return {"success": False, "message": "Failed to post job"}
 
 def get_all_jobs():
-    """Get all active jobs"""
     job_col = collections("jobs")
     jobs = list(job_col.find({"is_active": True}))
     
@@ -33,7 +30,6 @@ def get_all_jobs():
     return jobs
 
 def get_job_by_id(job_id: str):
-    """Get a single job by ID"""
     try:
         job_col = collections("jobs")
         job = job_col.find_one({"_id": ObjectId(job_id), "is_active": True})
@@ -46,7 +42,6 @@ def get_job_by_id(job_id: str):
         return None
 
 def update_job(job_id: str, update_data: dict):
-    """Update a job posting"""
     try:
         job_col = collections("jobs")
         
@@ -69,7 +64,6 @@ def update_job(job_id: str, update_data: dict):
         return {"success": False, "message": "Invalid job ID"}
 
 def delete_job(job_id: str):
-    """Soft delete a job (set is_active to False)"""
     try:
         job_col = collections("jobs")
         
@@ -87,7 +81,6 @@ def delete_job(job_id: str):
         return {"success": False, "message": "Invalid job ID"}
 
 def search_jobs(location: str = None, job_type: str = None, keyword: str = None):
-    """Search jobs by filters"""
     job_col = collections("jobs")
     query = {"is_active": True}
     

@@ -7,7 +7,7 @@ import json
 
 router = APIRouter(prefix="/api/employer", tags=["Employer"])
 
-# --- CREATE: Post a new job with image upload ---
+
 @router.post("/post-job", summary="Post a new job")
 async def post_job(
     image: UploadFile = File(..., description="Company or job image"),
@@ -30,21 +30,18 @@ async def post_job(
     application_deadline: str = Form(...)
 ):
     try:
-        # 1. Upload image to Cloudinary
+ 
         image_result = upload_image(image.file)
         
         if not image_result["success"]:
             raise HTTPException(status_code=400, detail=f"Image upload failed: {image_result.get('message')}")
         
-        # 2. Parse JSON strings to lists (fallback to comma-separated if not JSON)
         def parse_list(value, field_name):
             if not value:
                 return []
             try:
-                # Try JSON first
                 return json.loads(value)
             except json.JSONDecodeError:
-                # Fallback: split by comma
                 print(f"[DEBUG] {field_name} not JSON, trying comma-split: {value}")
                 return [item.strip() for item in value.split(",") if item.strip()]
         
@@ -53,7 +50,6 @@ async def post_job(
         
         print(f"[DEBUG] Parsed perks: {perks_list}, skills: {skills_list}")
         
-        # 3. Build job data
         job_data = {
             "image": image_result["url"],
             "image_public_id": image_result["public_id"],
@@ -76,11 +72,9 @@ async def post_job(
             "application_deadline": application_deadline
         }
         
-        # 4. Insert to database
         result = insert_job(job_data)
         
         if not result["success"]:
-            # Delete image from Cloudinary if DB insert failed
             delete_image(image_result["public_id"])
             raise HTTPException(status_code=400, detail=result["message"])
         
@@ -98,7 +92,6 @@ async def post_job(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
-# --- READ: Get all jobs ---
 @router.get("/jobs", summary="Get all jobs")
 async def list_jobs():
     jobs = get_all_jobs()
@@ -108,7 +101,6 @@ async def list_jobs():
         "data": jobs
     }
 
-# --- READ: Get single job by ID ---
 @router.get("/jobs/{job_id}", summary="Get job by ID")
 async def get_job(job_id: str):
     job = get_job_by_id(job_id)
@@ -121,7 +113,6 @@ async def get_job(job_id: str):
         "data": job
     }
 
-# --- READ: Search jobs ---
 @router.get("/jobs/search", summary="Search jobs")
 async def search(
     location: str = Query(None, description="Filter by location"),
@@ -135,7 +126,6 @@ async def search(
         "data": jobs
     }
 
-# --- UPDATE: Update job with optional image upload ---
 @router.put("/jobs/{job_id}", summary="Update job")
 async def update_job_endpoint(
     job_id: str,
@@ -158,7 +148,7 @@ async def update_job_endpoint(
     about_company: str = Form(...),
     application_deadline: str = Form(...)
 ):
-    # Get existing job to check for old image
+
     existing_job = get_job_by_id(job_id)
     if not existing_job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -183,7 +173,6 @@ async def update_job_endpoint(
         "application_deadline": application_deadline
     }
     
-    # Upload new image if provided
     if image:
         image_result = upload_image(image.file)
         if not image_result["success"]:
@@ -192,7 +181,6 @@ async def update_job_endpoint(
         update_data["image"] = image_result["url"]
         update_data["image_public_id"] = image_result["public_id"]
         
-        # Delete old image from Cloudinary if exists
         old_public_id = existing_job.get("image_public_id")
         if old_public_id:
             delete_image(old_public_id)
@@ -208,15 +196,13 @@ async def update_job_endpoint(
         "image_url": update_data.get("image")
     }
 
-# --- DELETE: Delete job (soft delete) and remove image ---
 @router.delete("/jobs/{job_id}", summary="Delete job")
 async def delete_job_endpoint(job_id: str):
-    # Get job to find image public_id
     job = get_job_by_id(job_id)
     if job and job.get("image_public_id"):
-        # Delete image from Cloudinary
+
         delete_image(job["image_public_id"])
-    
+        
     result = delete_job(job_id)
     
     if not result["success"]:

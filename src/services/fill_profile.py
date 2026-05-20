@@ -32,11 +32,10 @@ def fill_profile_service(profile_data: FillProfile, image_url: str = None, image
     update_data = {
         "fullname": profile_data.fullname,
         "nickname": profile_data.nickname,
-        # MongoDB ត្រូវការប្រភេទ datetime មិនមែន date ធម្មតាទេ ដូច្នេះយើងត្រូវបំប្លែងវា
         "date_of_birth": datetime.combine(profile_data.date_of_birth, datetime.min.time()),
         "phone": profile_data.phone,
         "gender": profile_data.gender,
-        "is_profile_completed": True, # បញ្ជាក់ថា profile ពេញលេញហើយ
+        "is_profile_completed": True, 
         "updated_at": datetime.now()
     }
     
@@ -56,7 +55,7 @@ def fill_profile_service(profile_data: FillProfile, image_url: str = None, image
     
     if updated_user:
         updated_user["_id"] = str(updated_user["_id"])
-        updated_user.pop("password", None) # លុប password ចេញមុន return
+        updated_user.pop("password", None)
         
     return {"success": True, "user": updated_user}
 
@@ -70,11 +69,9 @@ def get_profile_service(email: str):
         user = current_col.find_one({"email": email})
         
         if user:
-            # Convert ObjectId to string and remove password
             user["_id"] = str(user["_id"])
             user.pop("password", None)
             
-            # Convert datetime to string for JSON serialization
             if "date_of_birth" in user and user["date_of_birth"]:
                 user["date_of_birth"] = user["date_of_birth"].strftime("%Y-%m-%d")
             
@@ -109,7 +106,6 @@ def update_profile_service(email: str, profile_data: dict, image_url: str = None
     if not user:
         return {"success": False, "message": "User not found"}
     
-    # Check if email is being changed and validate uniqueness
     new_email = profile_data.get("email")
     if new_email and new_email != email:
         email_check = check_email_uniqueness_for_update(new_email, exclude_user_id=str(user["_id"]))
@@ -130,25 +126,22 @@ def update_profile_service(email: str, profile_data: dict, image_url: str = None
         except Exception as e:
             print(f"[ERROR] Failed to delete old image: {e}")
     
-    # Prepare update data
     update_data = {
         "updated_at": datetime.now()
     }
     
-    # Add profile fields if provided
     if "fullname" in profile_data:
         update_data["fullname"] = profile_data["fullname"]
     if "nickname" in profile_data:
         update_data["nickname"] = profile_data["nickname"]
     if "date_of_birth" in profile_data:
-        # Handle date string conversion with multiple formats
         if isinstance(profile_data["date_of_birth"], str):
             from datetime import datetime as dt
             date_formats = [
-                "%d_%m_%Y",  # DD_MM_YYYY
-                "%Y_%m_%d",  # YYYY_MM_DD  
-                "%d-%m-%Y",  # DD-MM-YYYY
-                "%Y-%m-%d",  # YYYY-MM-DD
+                "%d_%m_%Y",  
+                "%Y_%m_%d",
+                "%d-%m-%Y", 
+                "%Y-%m-%d",  
             ]
             
             parsed_date = None
@@ -171,18 +164,16 @@ def update_profile_service(email: str, profile_data: dict, image_url: str = None
     if "email" in profile_data:
         update_data["email"] = profile_data["email"]
     
-    # Mark profile as completed if all required fields are present
     required_fields = ["fullname", "nickname", "date_of_birth", "phone", "gender"]
     if all(field in update_data for field in required_fields):
         update_data["is_profile_completed"] = True
     
-    # Add image data if provided
     if image_url and image_public_id:
         update_data["image"] = image_url
         update_data["image_public_id"] = image_public_id
     
     # Update in database - use original email for the query, but update with new email if changed
-    query_email = email  # Use original email for the query
+    query_email = email 
     result = user_col.update_one(
         {"email": query_email}, 
         {"$set": update_data}
@@ -191,7 +182,6 @@ def update_profile_service(email: str, profile_data: dict, image_url: str = None
     if result.modified_count == 0:
         return {"success": False, "message": "No changes made to profile"}
     
-    # Get updated user data - check with new email first, then fallback to original
     new_email = profile_data.get("email", email)
     updated_user = user_col.find_one({"email": new_email}) or user_col.find_one({"email": query_email})
     
@@ -231,7 +221,6 @@ def delete_profile_service(email: str):
     if not user:
         return {"success": False, "message": "User not found"}
     
-    # Delete image from Cloudinary if exists
     if user.get("image_public_id"):
         try:
             from src.config.cloudinary import delete_image
@@ -239,7 +228,6 @@ def delete_profile_service(email: str):
         except Exception as e:
             print(f"[ERROR] Failed to delete image: {e}")
     
-    # Hard delete - permanently remove the document
     result = user_col.delete_one(
         {"email": email}
     )

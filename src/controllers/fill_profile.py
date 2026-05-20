@@ -19,7 +19,6 @@ async def fill_profile(
     gender: str = Form(...)
 ):
     try:
-        # 1. Upload image to Cloudinary if provided
         image_url = None
         image_public_id = None
         
@@ -32,15 +31,15 @@ async def fill_profile(
             image_url = image_result["url"]
             image_public_id = image_result["public_id"]
         
-        # 2. Parse date string to date object (handle multiple formats)
+  
         from datetime import datetime
         
-        # Try different date formats
+
         date_formats = [
-            "%d_%m_%Y",  # DD_MM_YYYY
-            "%Y_%m_%d",  # YYYY_MM_DD  
-            "%d-%m-%Y",  # DD-MM-YYYY
-            "%Y-%m-%d",  # YYYY-MM-DD
+            "%d_%m_%Y",  
+            "%Y_%m_%d",  
+            "%d-%m-%Y",
+            "%Y-%m-%d",
         ]
         
         parsed_date = None
@@ -54,7 +53,6 @@ async def fill_profile(
         if parsed_date is None:
             raise HTTPException(status_code=400, detail=f"Invalid date format: {date_of_birth}. Expected DD_MM_YYYY, YYYY_MM_DD, DD-MM-YYYY, or YYYY-MM-DD")
         
-        # 3. Create FillProfile object
         profile_data = FillProfile(
             fullname=fullname,
             nickname=nickname,
@@ -64,17 +62,14 @@ async def fill_profile(
             gender=gender
         )
         
-        # 4. Call service with image data
         result = fill_profile_service(profile_data, image_url, image_public_id)
         
-        # 5. Check result for errors
+
         if not result.get("success"):
-            # Delete image from Cloudinary if service failed
             if image_public_id:
                 delete_image(image_public_id)
             raise HTTPException(status_code=400, detail=result.get("message", "Failed to update profile"))
         
-        # 6. Return success response
         return {
             "status": "success",
             "message": "Profile updated successfully", 
@@ -123,7 +118,6 @@ async def update_profile(
 ):
     """Update user profile (partial update - only provided fields will be updated)"""
     try:
-        # 1. Upload image to Cloudinary if provided
         image_url = None
         image_public_id = None
         
@@ -136,7 +130,7 @@ async def update_profile(
             image_url = image_result["url"]
             image_public_id = image_result["public_id"]
         
-        # 2. Prepare profile data dictionary with only provided fields
+
         profile_data = {}
         
         if fullname is not None:
@@ -144,13 +138,13 @@ async def update_profile(
         if nickname is not None:
             profile_data["nickname"] = nickname
         if date_of_birth is not None:
-            # Validate date format
+         
             from datetime import datetime
             date_formats = [
-                "%d_%m_%Y",  # DD_MM_YYYY
-                "%Y_%m_%d",  # YYYY_MM_DD  
-                "%d-%m-%Y",  # DD-MM-YYYY
-                "%Y-%m-%d",  # YYYY-MM-DD
+                "%d_%m_%Y",
+                "%Y_%m_%d",  
+                "%d-%m-%Y", 
+                "%Y-%m-%d",  
             ]
             
             parsed_date = None
@@ -172,17 +166,15 @@ async def update_profile(
         if new_email is not None:
             profile_data["email"] = new_email
         
-        # 3. Call service with image data
         result = update_profile_service(email, profile_data, image_url, image_public_id)
         
-        # 4. Check result for errors
+
         if not result.get("success"):
-            # Delete image from Cloudinary if service failed
             if image_public_id:
                 delete_image(image_public_id)
             raise HTTPException(status_code=400, detail=result.get("message", "Failed to update profile"))
         
-        # 5. Return success response
+    
         return {
             "status": "success",
             "message": "Profile updated successfully", 

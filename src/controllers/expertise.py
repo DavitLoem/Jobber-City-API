@@ -22,7 +22,7 @@ async def get_expertise_fields():
     }
 
 @router.post("/", summary="Create multiple expertises at once")
-async def create_multiple_expertises(payloads: List[ExpertisePost]):  # ✅ ប្តូរទៅជា List
+async def create_multiple_expertises(payloads: List[ExpertisePost]): 
     inserted_ids = []
     
     for payload in payloads:

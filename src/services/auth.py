@@ -108,7 +108,6 @@ def insert_new_acc(email: str, password: str, job_type_id: Optional[str] = None)
         "is_active": True
     }
     
-    # Add job_type if provided
     if job_type_enum:
         new_user["job_type"] = job_type_enum.value
 

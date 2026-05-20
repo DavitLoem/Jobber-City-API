@@ -20,12 +20,10 @@ async def create_slider(
     order: int = Form(0, ge=0),
     is_active: bool = Form(True)
 ):
-    """Create a new promotional slider with image upload"""
-    # Validate order field
+
     if not validate_slider_order(order):
         raise HTTPException(status_code=400, detail="Order must be a non-negative integer")
     
-    # Create slider request object
     slider_data = SliderRequest(
         title=title,
         button_text=button_text,
@@ -34,7 +32,6 @@ async def create_slider(
         is_active=is_active
     )
     
-    # Call service to create slider with image
     result = create_slider_service(slider_data, image.file)
     
     if not result["success"]:
@@ -88,11 +85,10 @@ async def update_slider(
     is_active: bool = Form(True)
 ):
     """Update an existing slider with optional image update"""
-    # Validate order field
+ 
     if not validate_slider_order(order):
         raise HTTPException(status_code=400, detail="Order must be a non-negative integer")
-    
-    # Create slider request object
+
     slider_data = SliderRequest(
         title=title,
         button_text=button_text,
@@ -100,8 +96,7 @@ async def update_slider(
         order=order,
         is_active=is_active
     )
-    
-    # Get image file if provided
+
     image_file = image.file if image and image.filename else None
     
     result = update_slider_service(slider_id, slider_data, image_file)

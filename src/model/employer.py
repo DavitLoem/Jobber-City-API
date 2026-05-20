@@ -39,7 +39,7 @@ class Location(str, Enum):
     PAILIN = "Pailin"
     TBOUNG_KHMUM = "Tboung Khmum"
 
-class PostJobRequest(BaseModel):  # ឥឡូវនេះស្គាល់ BaseModel ហើយ
+class PostJobRequest(BaseModel): 
     job_title: str = Field(..., min_length=3, max_length=100)
     location: Location = Field(..., example="Phnom Penh")
     salary: str = Field(..., example="$1000 - $2000 /month")

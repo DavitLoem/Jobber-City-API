@@ -7,7 +7,6 @@ from src.config.mongo import collections
 
 
 def get_all_stored_cities_service() -> list:
-    """ទាញយកទិន្នន័យក្រុងទាំងអស់ចេញពី MongoDB ផ្ទាល់"""
     try:
         city_col = collections("Cities")
         # ទាញយក Record ទាំងអស់ដែលសកម្ម (is_active: True)
@@ -21,7 +20,6 @@ def get_all_stored_cities_service() -> list:
         return []
 
 def store_validated_city_service(city_name: str) -> dict:
-    """[POST] បញ្ចូលក្រុងថ្មីទៅក្នុង Database Jobber_City_data"""
     try:
         # ហៅប្រើប្រាស់ collection ឈ្មោះ "validated_cities"
         city_col = collections("Cities")
@@ -55,7 +53,6 @@ def store_validated_city_service(city_name: str) -> dict:
 
 
 def update_city_service(city_id: str, new_city_name: str) -> dict:
-    """[PUT] កែប្រែឈ្មោះក្រុងនៅក្នុង Database ដោយផ្អែកលើ ID"""
     try:
         city_col = collections("Cities")
         
@@ -77,7 +74,6 @@ def update_city_service(city_id: str, new_city_name: str) -> dict:
 
 
 def delete_city_service(city_id: str) -> dict:
-    """[DELETE] លុបក្រុងចេញពី Database ជារៀងរហូត"""
     try:
         city_col = collections("Cities")
         

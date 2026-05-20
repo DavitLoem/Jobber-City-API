@@ -33,7 +33,7 @@ async def create_account(body: CreateAccount = Body(...)):
     return {
         "status": "success",
         "message": "User Created Account successfully",
-        "data": user # បញ្ជូនព័ត៌មាន user ទៅឱ្យ frontend (ដែលលុប password រួចហើយ)
+        "data": user 
     }
 
 
@@ -46,7 +46,6 @@ async def user_login(body: LoginAccount = Body(...)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     # ២. រៀបចំ Payload សម្រាប់ JWT
-    # ប្រើ timezone-aware datetime សម្រាប់ Python 3.14
     now = datetime.datetime.now(datetime.timezone.utc)
     payload = {
         "user_id": str(user["_id"]),
@@ -68,12 +67,6 @@ async def user_login(body: LoginAccount = Body(...)):
             "email": user["email"]
         }
     }
-
-
-
-
-
-
 
 
 @router.post("/forgot-password", summary="Request PIN for forgot password")
@@ -130,7 +123,6 @@ async def reset_password(body: ResetPassword = Body(...)):
     elif body.phone:
         query = {"phone": body.phone}
 
-    # Check all collections and update the one where user is found
     collections_to_check = ["users", "employee", "employer"]
     updated = False
     
