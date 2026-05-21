@@ -5,7 +5,7 @@ from src.model.fill_profile import FillProfile
 from src.services.fill_profile import fill_profile_service, get_profile_service, update_profile_service, delete_profile_service
 from src.config.cloudinary import upload_image, delete_image
 
-router = APIRouter(prefix="/api/fill-profile", tags=["Fill Profile"])
+router = APIRouter(prefix="/api", tags=["Fill Profile"])
 
 
 @router.post("/fill-profile", summary="Fill user profile")

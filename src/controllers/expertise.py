@@ -8,9 +8,9 @@ from src.services.expertise import (
     delete_expertise_service
 )
 
-router = APIRouter(prefix="/api/expertise", tags=["Expertise"])
+router = APIRouter(prefix="/api", tags=["Expertise"])
 
-@router.get("/", summary="Get all expertise from Database")
+@router.get("/expertise", summary="Get all expertise from Database")
 async def get_expertise_fields():
    
     expertises = get_all_expertises_service()
@@ -21,7 +21,7 @@ async def get_expertise_fields():
         "data": expertises
     }
 
-@router.post("/", summary="Create multiple expertises at once")
+@router.post("/expertise", summary="Create multiple expertises at once")
 async def create_multiple_expertises(payloads: List[ExpertisePost]): 
     inserted_ids = []
     

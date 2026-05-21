@@ -4,9 +4,9 @@ from src.model.cities import CambodianCity, CityCreate, CityUpdate
 from src.services.cities import store_validated_city_service, get_all_stored_cities_service, update_city_service, delete_city_service
 
 
-router = APIRouter(prefix="/api/cities", tags=["Cities"])
+router = APIRouter(prefix="/api", tags=["Cities"])
 
-@router.post("/", summary="Create multiple cities at once")
+@router.post("/cities", summary="Create multiple cities at once")
 async def create_cities(cities: List[CityCreate]): 
     inserted_ids = []
     errors = []
@@ -24,7 +24,7 @@ async def create_cities(cities: List[CityCreate]):
         "failed_errors": errors
     }
 
-@router.get("/", summary="Get all Cambodian cities from Database")
+@router.get("/cities", summary="Get all Cambodian cities from Database")
 async def get_cambodian_cities():
     # ទាញទិន្នន័យផ្ទាល់ពី MongoDB
     cities = get_all_stored_cities_service()

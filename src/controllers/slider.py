@@ -9,7 +9,7 @@ from src.services.slider import (
     validate_slider_order
 )
 
-router = APIRouter(prefix="/api/slider", tags=["Slider"])
+router = APIRouter(prefix="/api", tags=["Slider"])
 
 @router.post("/sliders", summary="Create a new slider")
 async def create_slider(
