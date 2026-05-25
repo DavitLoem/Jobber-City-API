@@ -154,6 +154,8 @@ def find_and_verify_by_pin(email: str, pin_code: str):
     return {"success": True, "message": "OTP verified", "email": email}
 
 # 🎯 កែសម្រួល៖ បង្កើត និងផ្ញើ OTP ផ្ដោតទៅលើតែ Email មួយមុខគត់ (ដក Twilio ចេញទាំងស្រុង)
+# 🎯 ជំនួស Function create_otp នេះចូលក្នុង src/services/auth.py ដើម្បីឱ្យស្គាល់ទាំង Port 587 និង 465
+
 def create_otp(email: str):
     cleanup_expired_otps()
     
@@ -196,10 +198,16 @@ def create_otp(email: str):
             msg['From'] = smtp_user
             msg['To'] = email
             
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.send_message(msg)
+            # 🎯 កែសម្រួល៖ បត់បែនទៅតាម Port (បើ 465 ប្រើ SMTP_SSL បើ 587 ប្រើ STARTTLS)
+            if smtp_port == 465:
+                with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
+            else:
+                with smtplib.SMTP(smtp_host, smtp_port) as server:
+                    server.starttls()
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
             
             sent_via = "email"
     except Exception as e:
@@ -209,5 +217,5 @@ def create_otp(email: str):
         "success": True if sent_via else False,
         "user_found": True,
         "sent_via": sent_via or "none",
-        "message": f"OTP sent via {sent_via}" if sent_via else "Failed to send OTP due to connection error"
+        "message": "OTP sent via email" if sent_via else "Failed to send OTP due to connection error"
     }
