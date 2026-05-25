@@ -154,8 +154,6 @@ def find_and_verify_by_pin(email: str, pin_code: str):
     return {"success": True, "message": "OTP verified", "email": email}
 
 # 🎯 កែសម្រួល៖ បង្កើត និងផ្ញើ OTP ផ្ដោតទៅលើតែ Email មួយមុខគត់ (ដក Twilio ចេញទាំងស្រុង)
-# 🎯 ជំនួស Function create_otp នេះចូលក្នុង src/services/auth.py ដើម្បីឱ្យស្គាល់ទាំង Port 587 និង 465
-
 def create_otp(email: str):
     cleanup_expired_otps()
     
@@ -188,7 +186,7 @@ def create_otp(email: str):
     sent_via = None
     try:
         smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-        smtp_port = int(os.getenv("SMTP_PORT", 587))
+        smtp_port = int(os.getenv("SMTP_PORT", 465)) # Default ទៅ 465 សម្រាប់ Production
         smtp_user = os.getenv("SMTP_USER")
         smtp_password = os.getenv("SMTP_PASSWORD")
         
@@ -198,19 +196,24 @@ def create_otp(email: str):
             msg['From'] = smtp_user
             msg['To'] = email
             
-            # 🎯 កែសម្រួល៖ បត់បែនទៅតាម Port (បើ 465 ប្រើ SMTP_SSL បើ 587 ប្រើ STARTTLS)
+            # បើប្រើ Port 465 ត្រូវប្រើ SMTP_SSL ដាច់ខាតសម្រាប់ Railway
             if smtp_port == 465:
-                with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
-                    server.login(smtp_user, smtp_password)
-                    server.send_message(msg)
+                server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
+                server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+                server.quit()
+                sent_via = "email"
             else:
-                with smtplib.SMTP(smtp_host, smtp_port) as server:
-                    server.starttls()
-                    server.login(smtp_user, smtp_password)
-                    server.send_message(msg)
-            
-            sent_via = "email"
+                # សម្រាប់ Local បើបងប្រើ 587
+                server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+                server.quit()
+                sent_via = "email"
+                
     except Exception as e:
+        # វានឹងបង្ហាញប្រាប់នៅក្នុង Deploy Logs បើមានបញ្ហាអ្វីផ្សេងទៀត
         print(f"[ERROR] Email sending failed: {e}")
     
     return {
