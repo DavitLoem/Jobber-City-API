@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-app_env = os.getenv("APP_ENV", "development")
+app_env = os.getenv("APP_ENV",)
+is_local = app_env == "local"
 
 app = FastAPI(
     title="Jobber City API",
