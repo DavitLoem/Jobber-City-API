@@ -6,6 +6,11 @@ from src.controllers.slider import router as slider_router
 from src.controllers.cities import router as cities_router
 from src.controllers.expertise import router as expertise_router
 from src.controllers.fill_profile import router as fill_profile_router
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+app_env = os.getenv("APP_ENV", "development")
 
 app = FastAPI(
     title="Jobber City API",
