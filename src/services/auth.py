@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Collection, Optional
 import random
 import smtplib
+import resend
 import os
 from email.mime.text import MIMEText
 from bson import ObjectId, errors
@@ -153,7 +154,6 @@ def find_and_verify_by_pin(email: str, pin_code: str):
     otp_col.delete_one({"email": email})
     return {"success": True, "message": "OTP verified", "email": email}
 
-# 🎯 កែសម្រួល៖ បង្កើត និងផ្ញើ OTP ផ្ដោតទៅលើតែ Email មួយមុខគត់ (ដក Twilio ចេញទាំងស្រុង)
 def create_otp(email: str):
     cleanup_expired_otps()
     
@@ -174,40 +174,25 @@ def create_otp(email: str):
     
     otp_col = collections("otp_codes")
     otp_col.delete_many({"email": email})
-    
-    otp_data = {
+    otp_col.insert_one({
         "email": email,
         "hashed_otp": hashed_otp,
         "expires_at": expires_at,
         "created_at": datetime.now()
-    }
-    otp_col.insert_one(otp_data)
+    })
     
     sent_via = None
     try:
-        smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-        smtp_port = int(os.getenv("SMTP_PORT", 587))  # ← កែពី 465 មក 587
-        smtp_user = os.getenv("SMTP_USER")
-        smtp_password = os.getenv("SMTP_PASSWORD")
-        
-        if smtp_user and smtp_password:
-            msg = MIMEText(f"Your 4-digit OTP code is: {otp_code}\nThis code expires in 10 minutes.")
-            msg['Subject'] = 'Password Reset OTP'
-            msg['From'] = smtp_user
-            msg['To'] = email
-            
-            # ← ប្រើ 587 + STARTTLS តែមួយគត់
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)  # ← timeout កើនពី 10 មក 30
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(smtp_user, smtp_password)
-            server.send_message(msg)
-            server.quit()
-            sent_via = "email"
-                
+        resend.api_key = os.getenv("RESEND_API_KEY")
+        resend.Emails.send({
+            "from": "onboarding@resend.dev",
+            "to": email,
+            "subject": "Password Reset OTP - Jobber City",
+            "text": f"Your OTP code is: {otp_code}\nThis code expires in 10 minutes."
+        })
+        sent_via = "email"
     except Exception as e:
-        print(f"[ERROR] Email sending failed: {e}")
+        print(f"[ERROR] Resend failed: {e}")
     
     return {
         "success": True if sent_via else False,
