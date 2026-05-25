@@ -186,7 +186,7 @@ def create_otp(email: str):
     sent_via = None
     try:
         smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-        smtp_port = int(os.getenv("SMTP_PORT", 465)) # Default ទៅ 465 សម្រាប់ Production
+        smtp_port = int(os.getenv("SMTP_PORT", 587))  # ← កែពី 465 មក 587
         smtp_user = os.getenv("SMTP_USER")
         smtp_password = os.getenv("SMTP_PASSWORD")
         
@@ -196,24 +196,17 @@ def create_otp(email: str):
             msg['From'] = smtp_user
             msg['To'] = email
             
-            # បើប្រើ Port 465 ត្រូវប្រើ SMTP_SSL ដាច់ខាតសម្រាប់ Railway
-            if smtp_port == 465:
-                server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
-                server.login(smtp_user, smtp_password)
-                server.send_message(msg)
-                server.quit()
-                sent_via = "email"
-            else:
-                # សម្រាប់ Local បើបងប្រើ 587
-                server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.send_message(msg)
-                server.quit()
-                sent_via = "email"
+            # ← ប្រើ 587 + STARTTLS តែមួយគត់
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)  # ← timeout កើនពី 10 មក 30
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+            server.quit()
+            sent_via = "email"
                 
     except Exception as e:
-        # វានឹងបង្ហាញប្រាប់នៅក្នុង Deploy Logs បើមានបញ្ហាអ្វីផ្សេងទៀត
         print(f"[ERROR] Email sending failed: {e}")
     
     return {
