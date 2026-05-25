@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Read the public connection string directly
-mongo_url = os.getenv("MONGO_PUBLIC_URL")
+mongo_url = os.getenv("MONGO_URL")
 
 if not mongo_url:
     raise ValueError("MONGO_PUBLIC_URL is not set in the environment variables")
