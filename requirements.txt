@@ -10,6 +10,8 @@ motor
 google-auth 
 requests
 
+httpx
+
 # Environment and request handling
 python-dotenv
 python-multipart
