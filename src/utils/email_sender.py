@@ -55,7 +55,8 @@ async def send_otp_email(recipient_email: str, otp_code: str):
             port=MAIL_PORT,
             username=MAIL_USERNAME,
             password=MAIL_PASSWORD,
-            start_tls=True,
+            use_tls=(MAIL_PORT == 465),    # ប្រើ Implicit TLS បើជា Port 465
+            start_tls=(MAIL_PORT == 587),  # ប្រើ Explicit TLS បើជា Port 587
         )
         return True
     except Exception as e:
