@@ -2,8 +2,8 @@ import datetime
 import os
 import jwt
 from fastapi import APIRouter, HTTPException, Body
-from src.model.auth import CreateAccount, LoginAccount, PinCodeVerify, ResetPassword, Forgotpassword
-from src.services.auth import find_user_by_id, insert_new_acc, get_password_hash, login_service, find_and_verify_by_pin, create_otp, get_all_job_types
+from src.model.auth_model import CreateAccount, LoginAccount, PinCodeVerify, ResetPassword, Forgotpassword
+from src.services.auth_service import find_user_by_id, insert_new_acc, get_password_hash, login_service, find_and_verify_by_pin, create_otp, get_all_job_types
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
@@ -93,7 +93,7 @@ async def verify_pin_code(body: PinCodeVerify = Body(...)):
 
 @router.post("/reset-password")
 async def reset_password(body: ResetPassword = Body(...)):
-    from src.config.mongo import collections
+    from src.core.mongo import collections
     hashed = get_password_hash(body.new_password)
     
     query = {"email": body.email}

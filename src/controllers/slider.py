@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Body, Path, UploadFile, File, Form
-from src.model.slider import SliderRequest
-from src.services.slider import (
+from src.model.slider_model import SliderRequest
+from src.services.slider_service import (
     create_slider_service,
     get_all_sliders_service,
     get_slider_by_id_service,

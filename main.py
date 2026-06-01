@@ -1,33 +1,45 @@
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
-from src.controllers.auth import router as auth_router
-from src.controllers.employer import router as employer_router
-from src.controllers.slider import router as slider_router
-from src.controllers.cities import router as cities_router
-from src.controllers.expertise import router as expertise_router
-from src.controllers.fill_profile import router as fill_profile_router
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
-app_env = os.getenv("APP_ENV",)
-is_local = app_env == "local"
+# ទាញយក Environment (ឧ. local, staging, production)
+app_env = os.getenv("APP_ENV", "local") # ដាក់ "local" ជា Default បើអត់មាន
+show_docs = app_env in ["local", "staging"]
 
 app = FastAPI(
     title="Jobber City API",
-    description="Jobber City API for job seekers and employers",
+    description="API for Job Seeker and Employer Mobile App & Admin Dashboard",
+    docs_url="/docs" if show_docs else None,
+    redoc_url="/redoc" if show_docs else None,
     swagger_ui_parameters={"docExpansion": "none"}
 )
 
-# redirect root URL -> /docs
+# បន្ថែម CORS Middleware សម្រាប់អនុញ្ញាតឱ្យ Admin Web អាចហៅ API នេះបាន
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # ពេលដាក់ Production គួរដូរជា Domain របស់ Admin Web (ឧ. ["https://admin.jobbercity.com"])
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Redirect root URL
 @app.get("/", include_in_schema=False)
 async def root():
-    return RedirectResponse(url="/docs")
+    if show_docs:
+        return RedirectResponse(url="/docs")
+    return {"message": "Jobber City API is running securely."}
 
+
+# ==========================================
+# Routes 
+# ==========================================
+
+from src.domains.auth.router.auth_router import router as auth_router
+from src.domains.auth.router.admin_auth_router import router as admin_auth_router
 
 app.include_router(auth_router)
-app.include_router(cities_router)
-app.include_router(expertise_router)
-app.include_router(fill_profile_router)
-app.include_router(employer_router)
-app.include_router(slider_router)
+app.include_router(admin_auth_router)

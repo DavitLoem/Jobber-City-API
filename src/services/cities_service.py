@@ -1,9 +1,9 @@
 from datetime import datetime
 from bson import ObjectId
-from src.model.cities import CambodianCity
+from src.model.cities_model import CambodianCity
 # 📝 ត្រូវប្រាកដថា import collections ឱ្យចំកន្លែងដែលបងបានបង្កើតវា
 # ឧទាហរណ៍៖
-from src.config.mongo import collections
+from src.core.mongo import collections
 
 
 def get_all_stored_cities_service() -> list:

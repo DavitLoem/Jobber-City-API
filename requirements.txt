@@ -1,11 +1,31 @@
+# Web framework and ASGI server
 fastapi
 uvicorn
+
+# Database
 pymongo
+motor
+
+# Authentication
+google-auth 
+requests
+
+# Environment and request handling
 python-dotenv
-bcrypt==4.0.1
-PyJWT
 python-multipart
-passlib[bcrypt]
+pydantic_settings
+
+# Authentication and security
+PyJWT
+argon2-cffi
+# Storage and media
 cloudinary
+
+# Validation
 email-validator
-twilio
+
+# Email
+aiosmtplib
+
+# Templating
+jinja2

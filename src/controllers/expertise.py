@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from typing import List 
-from src.model.expertise import Expertise, ExpertisePost, ExpertiseUpdate
-from src.services.expertise import (
+from src.model.expertise_model import Expertise, ExpertisePost, ExpertiseUpdate
+from src.services.expertise_service import (
     get_all_expertises_service,
     store_validated_expertise_service,
     update_expertise_service,

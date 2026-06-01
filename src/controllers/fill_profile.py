@@ -1,9 +1,9 @@
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import Optional
-from src.model.fill_profile import FillProfile
-from src.services.fill_profile import fill_profile_service, get_profile_service, update_profile_service, delete_profile_service
-from src.config.cloudinary import upload_image, delete_image
+from src.model.fill_profile_model import FillProfile
+from src.services.fill_profile_service import fill_profile_service, get_profile_service, update_profile_service, delete_profile_service
+from src.utils.cloudinary import upload_image, delete_image
 
 router = APIRouter(prefix="/api", tags=["Fill Profile"])
 

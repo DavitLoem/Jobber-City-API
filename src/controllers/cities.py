@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
-from src.model.cities import CambodianCity, CityCreate, CityUpdate
-from src.services.cities import store_validated_city_service, get_all_stored_cities_service, update_city_service, delete_city_service
+from src.model.cities_model import CambodianCity, CityCreate, CityUpdate
+from src.services.cities_service import store_validated_city_service, get_all_stored_cities_service, update_city_service, delete_city_service
 
 
 router = APIRouter(prefix="/api", tags=["Cities"])

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Body, Query, UploadFile, File, Form
 from typing import Optional, List
-from src.model.employer import PostJobRequest, Location, JobType, WorkplaceType
-from src.services.employer import insert_job, get_all_jobs, get_job_by_id, update_job, delete_job, search_jobs
-from src.config.cloudinary import upload_image, delete_image
+from src.model.employer_model import PostJobRequest, Location, JobType, WorkplaceType
+from src.services.employer_service import insert_job, get_all_jobs, get_job_by_id, update_job, delete_job, search_jobs
+from src.utils.cloudinary import upload_image, delete_image
 import json
 
 router = APIRouter(prefix="/api/employer", tags=["Employer"])
