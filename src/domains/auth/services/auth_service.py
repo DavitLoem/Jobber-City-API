@@ -15,29 +15,60 @@ otps_collection = collections("otps")
 refresh_tokens_collection = collections("refresh_tokens")
 
 async def register_mobile_user(user_data: UserRegister) -> dict:
-    # ឆែកមើលអ៊ីមែល
+    # 1. ស្វែងរកគណនីក្នុង Database
     existing_user = await users_collection.find_one({"email": user_data.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email is already in use.")
-
-    # បង្កើត User ចូល Database
     hashed_pwd = hash_password(user_data.password)
-    new_user_dict = create_user_model(
-        name=user_data.name,
-        email=user_data.email,
-        phone_number=user_data.phone_number,
-        password_hash=hashed_pwd,
-        role=user_data.role.value
-    )
-    result = await users_collection.insert_one(new_user_dict)
     
-    # 🎯 ហៅមុខងារ OTP (កូដ ៣ បន្ទាត់ជំនួសកូដវែងៗពីមុន)
-    await generate_and_send_otp(user_id=result.inserted_id, email=user_data.email)
+    if existing_user:
+        # 🎯 ដំណោះស្រាយទី ២ (ផ្នែក A): បើធ្លាប់ចុះឈ្មោះ តែមិនទាន់ Verify (Zombie Account)
+        if existing_user.get("verified_at") is None:
+            # អនុញ្ញាតឱ្យគាត់ចុះឈ្មោះម្តងទៀត ដោយ Update ព័ត៌មានថ្មីជាន់ពីលើ
+            await users_collection.update_one(
+                {"_id": existing_user["_id"]},
+                {"$set": {
+                    "name": user_data.name,
+                    "phone_number": user_data.phone_number,
+                    "password_hash": hashed_pwd,
+                    "role": user_data.role.value,
+                    "updated_at": datetime.now(timezone.utc)
+                }}
+            )
+            user_id = existing_user["_id"]
+        else:
+            # បើគាត់ Verify រួចរាល់ហើយ ទើបបដិសេធមិនឱ្យចុះឈ្មោះ
+            raise HTTPException(status_code=400, detail="Email is already in use.")
+    else:
+        # ករណីថ្មីស្រឡាង: បង្កើត User ចូល Database ជាធម្មតា
+        new_user_dict = create_user_model(
+            name=user_data.name,
+            email=user_data.email,
+            phone_number=user_data.phone_number,
+            password_hash=hashed_pwd,
+            role=user_data.role.value
+        )
+        result = await users_collection.insert_one(new_user_dict)
+        user_id = result.inserted_id
 
-    new_user_dict["id"] = str(result.inserted_id)
-    del new_user_dict["_id"]
-    del new_user_dict["password_hash"]
-    return new_user_dict
+    # 2. 🎯 ដំណោះស្រាយទី ២ (ផ្នែក B): ការពារពេលផ្ញើ OTP មានបញ្ហា (Rollback)
+    try:
+        await generate_and_send_otp(user_id=user_id, email=user_data.email)
+    except Exception as e:
+        # បើផ្ញើ OTP មិនចេញ ហើយជាគណនីថ្មីស្រឡាង យើងលុបវាចេញពី DB វិញភ្លាមៗ
+        if not existing_user: 
+            await users_collection.delete_one({"_id": user_id})
+        
+        print(f"Failed to send OTP during registration: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Registration failed due to an issue with sending the OTP. Please try again later."
+        )
+
+    # 3. 🎯 ដំណោះស្រាយទី ១: កាត់បន្ថយការបោះទិន្នន័យ (Data Minimization)
+    return {
+        "email": user_data.email,
+        "requires_otp": True,
+        "message": "Please verify your account with the OTP sent to your email before logging in."
+    }
 
 async def login_mobile_user(login_data: UserLogin) -> dict:
     # 1. ស្វែងរក User តាម Email
@@ -130,7 +161,8 @@ async def verify_otp_and_login(otp_data: OTPVerify) -> dict:
             "name": user["name"],
             "email": user["email"],
             "role": user["role"],
-            "is_profile_completed": user["is_profile_completed"]
+            "is_profile_completed": user.get("is_profile_completed", False),
+            "avatar_url": user.get("avatar_url") 
         }
     }
 
@@ -281,11 +313,22 @@ async def renew_access_token(data: RefreshTokenRequest) -> dict:
 
     # 4. ផលិត Access Token ថ្មី (៣០ នាទី) ជូនគាត់វិញ
     new_access_token = create_access_token({"sub": str(user["_id"]), "role": user["role"]})
+    new_refresh_token = create_refresh_token({"sub": str(user["_id"])})
+    
+    # 5. សម្លាប់ Token ចាស់ចោល ដើម្បីសុវត្ថិភាព (ការពារ Hacker លួចយករបស់ចាស់ទៅប្រើ)
+    await refresh_tokens_collection.update_one(
+        {"_id": saved_token["_id"]},
+        {"$set": {"is_revoked": True}}
+    )
+    
+    # 6. រក្សាទុក Token ថ្មីចូល Database
+    token_model = create_refresh_token_model(user_id=user["_id"], token=new_refresh_token)
+    await refresh_tokens_collection.insert_one(token_model)
 
     # ចំណាំ: យើងមិនបាច់បោះ User Profile ទៅវិញទេ ព្រោះ App មានរួចហើយ។ គេត្រូវការតែ Token ថ្មី។
     return {
         "access_token": new_access_token,
-        "refresh_token": data.refresh_token, # បោះរបស់ចាស់ឱ្យគាត់កាន់ដដែល
+        "refresh_token": new_refresh_token,
         "token_type": "bearer"
     }
     
