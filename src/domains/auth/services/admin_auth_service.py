@@ -73,7 +73,7 @@ async def _generate_tokens_for_admin(user: dict) -> dict:
     )
     
     return {
-        "requires_otp": False, # ប្រាប់ Frontend ថា Login ចប់សព្វគ្រប់ហើយ
+        "requires_otp": False,
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
@@ -82,6 +82,7 @@ async def _generate_tokens_for_admin(user: dict) -> dict:
             "name": user["name"],
             "email": user["email"],
             "role": user["role"],
-            "avatar_url": user.get("avatar_url")
+            "avatar_url": user.get("avatar_url"),
+            "is_profile_completed": user.get("is_profile_completed", True) 
         }
     }

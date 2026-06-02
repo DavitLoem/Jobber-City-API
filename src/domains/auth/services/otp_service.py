@@ -45,3 +45,33 @@ async def verify_otp_code(email: str, otp_code: str, purpose: str = "register") 
     await otps_collection.update_one({"_id": latest_otp["_id"]}, {"$set": {"is_used": True}})
     
     return latest_otp
+
+async def verify_otp_code(email: str, otp_code: str, purpose: str = "register") -> dict:
+    """មុខងារសម្រាប់ផ្ទៀងផ្ទាត់លេខកូដដែល User វាយបញ្ចូល។"""
+    
+    # 🎯 ទី១: កាត់ចោលរាល់ការដកឃ្លា ឬ Space ដែលមើលមិនឃើញ
+    clean_otp_code = str(otp_code).strip()
+    
+    cursor = otps_collection.find({"email": email, "purpose": purpose}).sort("created_at", -1).limit(1)
+    otps = await cursor.to_list(length=1)
+
+    if not otps:
+        raise HTTPException(status_code=400, detail="មិនមានលេខកូដ OTP សម្រាប់អ៊ីមែលនេះទេ")
+    
+    latest_otp = otps[0]
+
+    if latest_otp["is_used"]:
+        raise HTTPException(status_code=400, detail="លេខកូដនេះត្រូវបានប្រើប្រាស់រួចហើយ")
+    
+    if latest_otp["expires_at"].replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="លេខកូដ OTP នេះបានផុតកំណត់ហើយ")
+    
+    # ប្រើ clean_otp_code ដែលបានកាត់ Space រួច យកមកផ្ទៀងផ្ទាត់
+    if not verify_password(clean_otp_code, latest_otp["otp_hash"]):
+        print("❌ បរាជ័យ! លេខកូដនេះមិនត្រូវគ្នានឹង Hash ក្នុង Database ទេ")
+        raise HTTPException(status_code=400, detail="លេខកូដ OTP មិនត្រឹមត្រូវទេ")
+
+    # បើត្រូវទាំងអស់ ដុតកម្ទេចវាចោល
+    await otps_collection.update_one({"_id": latest_otp["_id"]}, {"$set": {"is_used": True}})
+    
+    return latest_otp

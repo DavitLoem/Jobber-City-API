@@ -63,6 +63,12 @@ class ResetPasswordRequest(BaseModel):
 class OTPVerify(BaseModel):
     email: EmailStr
     otp_code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
+ 
+# ​For admin   
+class OTPChallengeResponse(BaseModel):
+    requires_otp: bool
+    email: str
+    message: str
     
 class ResendOTPRequest(BaseModel):
     email: EmailStr

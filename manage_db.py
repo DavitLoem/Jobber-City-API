@@ -39,7 +39,7 @@ async def seed_database():
         seed_users = [
             {
                 "name": "Super Admin",
-                "email": "admin@app.com",
+                "email": "roronoazoro11502@gmail.com",
                 "password_hash": default_password,
                 "auth_provider": "local",
                 "role": "admin",
@@ -49,30 +49,6 @@ async def seed_database():
                 "created_at": now,
                 "updated_at": now
             },
-            {
-                "name": "Tech Employer",
-                "email": "employer@app.com",
-                "password_hash": default_password,
-                "auth_provider": "local",
-                "role": "employer",
-                "is_active": True,
-                "is_profile_completed": True,
-                "verified_at": now,
-                "created_at": now,
-                "updated_at": now
-            },
-            {
-                "name": "Sok JobSeeker",
-                "email": "employee@app.com",
-                "password_hash": default_password,
-                "auth_provider": "local",
-                "role": "employee",
-                "is_active": True,
-                "is_profile_completed": False, # ទុក False ដើម្បី Test មុខងារ Setup Profile
-                "verified_at": now,
-                "created_at": now,
-                "updated_at": now
-            }
         ]
 
         # បញ្ចូលទិន្នន័យទាំងអស់ទៅក្នុង Database ក្នុងពេលតែមួយ
