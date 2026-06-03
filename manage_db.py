@@ -49,6 +49,18 @@ async def seed_database():
                 "created_at": now,
                 "updated_at": now
             },
+            {
+                "name": "Super Admin",
+                "email": "vitloem@gmail.com",
+                "password_hash": default_password,
+                "auth_provider": "local",
+                "role": "admin",
+                "is_active": True,
+                "is_profile_completed": True,
+                "verified_at": now,
+                "created_at": now,
+                "updated_at": now
+            },
         ]
 
         # បញ្ចូលទិន្នន័យទាំងអស់ទៅក្នុង Database ក្នុងពេលតែមួយ
