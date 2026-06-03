@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
+
 load_dotenv()
 # ទាញយក Environment (ឧ. local, staging, production)
 app_env = os.getenv("APP_ENV", "local") # ដាក់ "local" ជា Default បើអត់មាន
@@ -38,15 +39,18 @@ async def root():
 # ==========================================
 # Routes 
 # ==========================================
-from src.core.mongo import categories_collection
 from src.domains.auth.router.auth_router import router as auth_router
 from src.domains.auth.router.admin_auth_router import router as admin_auth_router
 from src.domains.category.routes.category_route import router as category_router
 from src.domains.category.routes.admin_category_route import router as admin_category_router
+from src.domains.location.routes.admin_location_route import router as admin_location_router
 
-
+# Admin Routes
 app.include_router(admin_auth_router)
 app.include_router(admin_category_router)
-app.include_router(auth_router) # បន្ថែម Router សម្រាប់ Authentication (Login/Logout) របស់ Admin
+app.include_router(admin_location_router)
+
+# Mobile App Routes
+app.include_router(auth_router)
 app.include_router(category_router)
 

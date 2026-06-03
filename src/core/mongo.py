@@ -26,6 +26,9 @@ users_collection = collections("users")
 refresh_tokens_collection = collections("refresh_tokens")
 otps_collection = collections("otps")
 
+# categories
+categories_collection = collections("categories")
+
 # Locations
 provinces_collection = collections("job_provinces")
 districts_collection = collections("job_districts")

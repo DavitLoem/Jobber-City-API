@@ -3,7 +3,8 @@ from fastapi import HTTPException
 from bson import ObjectId
 from src.core.mongo import provinces_collection, districts_collection
 from src.domains.location.location_schema import ProvinceRequest, DistrictRequest
-from src.domains.location.models.province_model import create_province_model
+from src.domains.location.models.province_model import ProvinceModel
+from src.domains.location.models.district_model import DistrictModel
 
 # ==========================================
 # 📍 ផ្នែកខេត្ត/ក្រុង (PROVINCES CRUD)
@@ -11,30 +12,43 @@ from src.domains.location.models.province_model import create_province_model
 
 async def create_province(data: ProvinceRequest) -> dict:
     """បង្កើតខេត្តថ្មី"""
-    # ១. ឆែកមើលក្រែងលោមានឈ្មោះខេត្តនេះរួចហើយ
-    existing_province = await provinces_collection.find_one({
-        "$or": [{"name_km": data.name_km}, {"name_en": data.name_en}]
-    })
-    if existing_province:
-        raise HTTPException(status_code=400, detail="The province already exists")
+    
+    # ១. រៀបចំលក្ខខណ្ឌឆែកស្ទួនយ៉ាងឆ្លាតវៃ (បញ្ចៀសការឆែកតម្លៃ null)
+    or_conditions = [{"name_en": data.name_en}]
+    if data.name_km: # ថែមលក្ខខណ្ឌ name_km លុះត្រាតែមានទិន្នន័យ (មិនមែន None)
+        or_conditions.append({"name_km": data.name_km})
 
-    new_province = create_province_model(
+    existing_province = await provinces_collection.find_one({
+        "$or": or_conditions
+    })
+    
+    if existing_province:
+        if data.name_km and existing_province.get("name_km") == data.name_km and existing_province.get("name_en") == data.name_en:
+            error_msg = f"A province with the same Khmer and English names already exists."
+        elif data.name_km and existing_province.get("name_km") == data.name_km:
+            error_msg = f"A province with the same Khmer name already exists."
+        else:
+            error_msg = f"A province with the same English name already exists."
+
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    # ២. ប្រើ Model ដើម្បីចាត់ចែងទិន្នន័យ
+    new_province = ProvinceModel(
         name_km=data.name_km,
         name_en=data.name_en,
         sort_order=data.sort_order,
         is_active=data.is_active
-    )
+    ).to_create_dict()
 
     # ៣. Save ចូល Database
     result = await provinces_collection.insert_one(new_province)
     
-    # ៤. រៀបចំទិន្នន័យដើម្បីបោះត្រឡប់ទៅឱ្យ API វិញ (ProvinceResponse)
+    # ៤. រៀបចំទិន្នន័យដើម្បីបោះត្រឡប់ទៅឱ្យ API វិញ
     new_province["id"] = str(result.inserted_id)
     return new_province
 
 async def get_all_provinces_admin() -> list[dict]:
     """ទាញយកខេត្តទាំងអស់សម្រាប់ Admin (ទាំង Active និង Inactive)"""
-    # តម្រៀបតាម sort_order រួចតាមឈ្មោះ
     cursor = provinces_collection.find({}).sort([("sort_order", 1), ("name_en", 1)])
     provinces = await cursor.to_list(length=100)
     
@@ -45,10 +59,14 @@ async def get_all_provinces_admin() -> list[dict]:
 async def update_province(province_id: str, data: ProvinceRequest) -> dict:
     """កែប្រែទិន្នន័យខេត្ត"""
     if not ObjectId.is_valid(province_id):
-        raise HTTPException(status_code=400, detail="លេខសម្គាល់ខេត្តមិនត្រឹមត្រូវទេ")
+        raise HTTPException(status_code=400, detail="Invalid province ID")
 
-    update_data = data.model_dump()
-    update_data["updated_at"] = datetime.now(timezone.utc)
+    update_data = ProvinceModel(
+        name_km=data.name_km,
+        name_en=data.name_en,
+        sort_order=data.sort_order,
+        is_active=data.is_active
+    ).to_update_dict()
 
     result = await provinces_collection.find_one_and_update(
         {"_id": ObjectId(province_id)},
@@ -57,24 +75,26 @@ async def update_province(province_id: str, data: ProvinceRequest) -> dict:
     )
 
     if not result:
-        raise HTTPException(status_code=404, detail="រកមិនឃើញខេត្តនេះទេ")
+        raise HTTPException(status_code=404, detail="The province not found")
 
     result["id"] = str(result.pop("_id"))
     return result
 
 async def delete_province(province_id: str) -> dict:
-    """លុបខេត្ត (Soft Delete: គ្រាន់តែប្តូរ is_active=False)"""
+    """លុបខេត្ត (Soft Delete) ដោយប្រើ Model"""
     if not ObjectId.is_valid(province_id):
-        raise HTTPException(status_code=400, detail="លេខសម្គាល់ខេត្តមិនត្រឹមត្រូវទេ")
+        raise HTTPException(status_code=400, detail="Invalid province ID")
+
+    update_data = ProvinceModel.to_delete_dict()
 
     result = await provinces_collection.find_one_and_update(
         {"_id": ObjectId(province_id)},
-        {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc)}},
+        {"$set": update_data},
         return_document=True
     )
 
     if not result:
-        raise HTTPException(status_code=404, detail="រកមិនឃើញខេត្តនេះទេ")
+        raise HTTPException(status_code=404, detail="The province not found")
 
     result["id"] = str(result.pop("_id"))
     return result
@@ -85,27 +105,40 @@ async def delete_province(province_id: str) -> dict:
 # ==========================================
 
 async def create_district(data: DistrictRequest) -> dict:
-    """បង្កើតស្រុកថ្មី"""
+    """បង្កើតស្រុកថ្មី ដោយប្រើ Model"""
     if not ObjectId.is_valid(data.province_id):
-        raise HTTPException(status_code=400, detail="លេខសម្គាល់ខេត្ត (Province ID) មិនត្រឹមត្រូវទេ")
+        raise HTTPException(status_code=400, detail="Invalid province ID")
 
-    # ១. ផ្ទៀងផ្ទាត់ថាតើខេត្តមេរបស់វាពិតជាមានមែនឬទេ
     parent_province = await provinces_collection.find_one({"_id": ObjectId(data.province_id)})
     if not parent_province:
-        raise HTTPException(status_code=404, detail="រកមិនឃើញខេត្តមេសម្រាប់ស្រុកនេះទេ")
+        raise HTTPException(status_code=404, detail="The province not found")
 
-    # ២. ឆែកមើលក្រែងលោមានឈ្មោះស្រុកនេះស្ទួននៅក្នុងខេត្តដដែល
+    # 🎯 រៀបចំលក្ខខណ្ឌឆែកស្ទួនសម្រាប់ស្រុក ដូចដែលបានធ្វើលើខេត្តដែរ
+    or_conditions = [{"name_en": data.name_en}]
+    if data.name_km:
+        or_conditions.append({"name_km": data.name_km})
+
     existing_district = await districts_collection.find_one({
         "province_id": ObjectId(data.province_id),
-        "$or": [{"name_km": data.name_km}, {"name_en": data.name_en}]
+        "$or": or_conditions
     })
+    
     if existing_district:
-        raise HTTPException(status_code=400, detail="ឈ្មោះស្រុកនេះមានរួចហើយនៅក្នុងខេត្តនេះ")
+        if data.name_km and existing_district.get("name_km") == data.name_km and existing_district.get("name_en") == data.name_en:
+            error_msg = f"A district with the same Khmer and English names already exists in this province."
+        elif data.name_km and existing_district.get("name_km") == data.name_km:
+            error_msg = f"A district with the same Khmer name already exists in this province."
+        else:
+            error_msg = f"A district with the same English name already exists in this province."
+        raise HTTPException(status_code=400, detail=error_msg)
 
-    new_district = data.model_dump()
-    new_district["province_id"] = ObjectId(new_district["province_id"]) # បំប្លែងទៅ ObjectId មុន Save
-    new_district["created_at"] = datetime.now(timezone.utc)
-    new_district["updated_at"] = datetime.now(timezone.utc)
+    new_district = DistrictModel(
+        province_id=data.province_id,
+        name_km=data.name_km,
+        name_en=data.name_en,
+        sort_order=data.sort_order,
+        is_active=data.is_active
+    ).to_create_dict()
 
     result = await districts_collection.insert_one(new_district)
     
@@ -116,10 +149,10 @@ async def create_district(data: DistrictRequest) -> dict:
 async def get_districts_by_province_admin(province_id: str) -> list[dict]:
     """ទាញយកស្រុកទាំងអស់នៅក្នុងខេត្តណាមួយ"""
     if not ObjectId.is_valid(province_id):
-        raise HTTPException(status_code=400, detail="លេខសម្គាល់ខេត្តមិនត្រឹមត្រូវទេ")
+        raise HTTPException(status_code=400, detail="Invalid province ID")
 
     cursor = districts_collection.find({"province_id": ObjectId(province_id)}).sort([("sort_order", 1), ("name_en", 1)])
-    districts = await cursor.to_list(length=200) # ស្រុកក្នុងមួយខេត្តប្រហែលមិនលើស ២០០ ទេ
+    districts = await cursor.to_list(length=200)
     
     for dist in districts:
         dist["id"] = str(dist.pop("_id"))
@@ -127,13 +160,37 @@ async def get_districts_by_province_admin(province_id: str) -> list[dict]:
     return districts
 
 async def update_district(district_id: str, data: DistrictRequest) -> dict:
-    """កែប្រែទិន្នន័យស្រុក"""
+    """កែប្រែទិន្នន័យស្រុក ដោយប្រើ Model"""
     if not ObjectId.is_valid(district_id) or not ObjectId.is_valid(data.province_id):
-        raise HTTPException(status_code=400, detail="លេខសម្គាល់មិនត្រឹមត្រូវទេ")
+        raise HTTPException(status_code=400, detail="Invalid district ID or province ID")
 
-    update_data = data.model_dump()
-    update_data["province_id"] = ObjectId(update_data["province_id"])
-    update_data["updated_at"] = datetime.now(timezone.utc)
+    update_data = DistrictModel(
+        province_id=data.province_id,
+        name_km=data.name_km,
+        name_en=data.name_en,
+        sort_order=data.sort_order,
+        is_active=data.is_active
+    ).to_update_dict()
+    
+    result = await districts_collection.find_one_and_update(
+        {"_id": ObjectId(district_id)},
+        {"$set": update_data},
+        return_document=True
+    )
+
+    if not result:
+        raise HTTPException(status_code=404, detail="The district not found")
+
+    result["id"] = str(result.pop("_id"))
+    result["province_id"] = str(result["province_id"])
+    return result
+
+async def delete_district(district_id: str) -> dict:
+    """លុបស្រុក (Soft Delete) ដោយប្រើ Model"""
+    if not ObjectId.is_valid(district_id):
+        raise HTTPException(status_code=400, detail="Invalid district ID")
+
+    update_data = DistrictModel.to_delete_dict()
 
     result = await districts_collection.find_one_and_update(
         {"_id": ObjectId(district_id)},
@@ -142,25 +199,7 @@ async def update_district(district_id: str, data: DistrictRequest) -> dict:
     )
 
     if not result:
-        raise HTTPException(status_code=404, detail="រកមិនឃើញស្រុកនេះទេ")
-
-    result["id"] = str(result.pop("_id"))
-    result["province_id"] = str(result["province_id"])
-    return result
-
-async def delete_district(district_id: str) -> dict:
-    """លុបស្រុក (Soft Delete)"""
-    if not ObjectId.is_valid(district_id):
-        raise HTTPException(status_code=400, detail="លេខសម្គាល់ស្រុកមិនត្រឹមត្រូវទេ")
-
-    result = await districts_collection.find_one_and_update(
-        {"_id": ObjectId(district_id)},
-        {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc)}},
-        return_document=True
-    )
-
-    if not result:
-        raise HTTPException(status_code=404, detail="រកមិនឃើញស្រុកនេះទេ")
+        raise HTTPException(status_code=404, detail="The district not found")
 
     result["id"] = str(result.pop("_id"))
     result["province_id"] = str(result["province_id"])
