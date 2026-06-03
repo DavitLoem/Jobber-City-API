@@ -18,3 +18,15 @@ db = client[mongo_db_name]
 def collections(name: str):
     return db[name]
 
+# ==========================================
+# 🎯 ប្រកាស Collection ទាំងអស់នៅទីនេះតែម្តង!
+# ==========================================
+
+users_collection = collections("users")
+refresh_tokens_collection = collections("refresh_tokens")
+otps_collection = collections("otps")
+
+# Locations
+provinces_collection = collections("job_provinces")
+districts_collection = collections("job_districts")
+
