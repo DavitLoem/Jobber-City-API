@@ -55,8 +55,8 @@ async def login(login_data: UserLogin):
 @router.post("/verify-otp", response_model=APIResponse[TokenResponse])
 async def verify_otp(otp_data: OTPVerify):
     """
-    Route នេះទទួលយក Email និង OTP ៦ ខ្ទង់ពី Mobile App។
-    បើផ្ទៀងផ្ទាត់ជោគជ័យ វានឹងបញ្ចេញ Token និងប្រវត្តិរូប (Auto-login) ត្រឡប់ទៅវិញតែម្តង។
+    Route នេះទទួលយក Email និង OTP ៦ ខ្ទង់ពី Mobile App
+    បើផ្ទៀងផ្ទាត់ជោគជ័យ វានឹងបញ្ចេញ Token និងប្រវត្តិរូប (Auto-login) ត្រឡប់ទៅវិញតែម្តង
     """
     result = await verify_otp_and_login(otp_data)
     
