@@ -18,3 +18,7 @@ db = client[mongo_db_name]
 def collections(name: str):
     return db[name]
 
+categories_collection = db["categories"]
+
+    
+
