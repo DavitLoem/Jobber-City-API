@@ -20,6 +20,7 @@
 src/
 └── domains/
     ├── auth/
+        |__ auth_model.py
     │   ├── auth_schema.py        # កំណត់ទម្រង់ Request (Mobile Login, Admin Login)
     │   ├── auth_service.py       # Logic រួម (ការបង្កើត Token, ការ Hash Password)
     │   ├── mobile_auth_router.py # Route សម្រាប់ Mobile App (/api/v1/mobile/auth/...)

@@ -17,18 +17,18 @@ async def login_admin_user(login_data: UserLogin) -> dict:
     user = await users_collection.find_one({"email": login_data.email})
     
     if not user:
-        raise HTTPException(status_code=401, detail="អ៊ីមែល ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ")
+        raise HTTPException(status_code=401, detail="Email or password is incorrect")
 
     if user.get("auth_provider") == "google":
-        raise HTTPException(status_code=400, detail="គណនីនេះមិនអាចប្រើសម្រាប់សិទ្ធិ Admin បានទេ។")
+        raise HTTPException(status_code=400, detail="This account is registered via Google. Please use Google Sign-In.")
         
     if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="អ្នកមិនមានសិទ្ធិចូលប្រើប្រាស់ផ្ទាំងនេះទេ។")
+        raise HTTPException(status_code=403, detail="You do not have permission to access this resource.")
 
     await validate_password_and_lockout(user=user, password=login_data.password)
         
     if not user.get("is_active"):
-        raise HTTPException(status_code=403, detail="គណនី Admin របស់អ្នកត្រូវបានផ្អាកដំណើរការ")
+        raise HTTPException(status_code=403, detail="Your Admin account has been deactivated.")
 
     # 🎯 លក្ខខណ្ឌ Bypass OTP
     if settings.REQUIRE_ADMIN_OTP:
@@ -37,7 +37,7 @@ async def login_admin_user(login_data: UserLogin) -> dict:
         return {
             "requires_otp": True,
             "email": user["email"],
-            "message": "សូមពិនិត្យមើលអ៊ីមែលរបស់អ្នកសម្រាប់លេខកូដ OTP ៦ ខ្ទង់"
+            "message": "OTP has been sent to your email. Please enter the OTP to complete login."
         }
     else:
         # បើ Bypass (False) គឺបញ្ចេញ Token ឱ្យតែម្តង!
