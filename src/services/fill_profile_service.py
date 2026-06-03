@@ -1,7 +1,7 @@
-from src.config.mongo import collections
+from src.core.mongo import collections
 from datetime import datetime
-from src.model.fill_profile import FillProfile
-from src.services.auth import check_email_uniqueness_for_update
+from src.model.fill_profile_model import FillProfile
+from src.services.auth_service import check_email_uniqueness_for_update
 
 
 def fill_profile_service(profile_data: FillProfile, image_url: str = None, image_public_id: str = None):
@@ -23,7 +23,7 @@ def fill_profile_service(profile_data: FillProfile, image_url: str = None, image
     # ២. Delete old image from Cloudinary if exists and new image is provided
     if image_url and image_public_id and user.get("image_public_id"):
         try:
-            from src.config.cloudinary import delete_image
+            from src.utils.cloudinary import delete_image
             delete_image(user["image_public_id"])
         except Exception as e:
             print(f"[ERROR] Failed to delete old image: {e}")
@@ -121,7 +121,7 @@ def update_profile_service(email: str, profile_data: dict, image_url: str = None
     # Delete old image from Cloudinary if exists and new image is provided
     if image_url and image_public_id and user.get("image_public_id"):
         try:
-            from src.config.cloudinary import delete_image
+            from src.utils.cloudinary import delete_image
             delete_image(user["image_public_id"])
         except Exception as e:
             print(f"[ERROR] Failed to delete old image: {e}")
@@ -223,7 +223,7 @@ def delete_profile_service(email: str):
     
     if user.get("image_public_id"):
         try:
-            from src.config.cloudinary import delete_image
+            from src.utils.cloudinary import delete_image
             delete_image(user["image_public_id"])
         except Exception as e:
             print(f"[ERROR] Failed to delete image: {e}")

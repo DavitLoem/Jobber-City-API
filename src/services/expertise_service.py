@@ -1,6 +1,6 @@
 from datetime import datetime
 from bson import ObjectId
-from src.config.mongo import collections 
+from src.core.mongo import collections 
 
 def get_all_expertises_service() -> list:
     try:

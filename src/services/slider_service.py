@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import List, Optional
-from src.config.mongo import collections
-from src.config.cloudinary import upload_image, delete_image
-from src.model.slider import SliderRequest
+from src.core.mongo import collections
+from src.utils.cloudinary import upload_image, delete_image
+from src.model.slider_model import SliderRequest
 
 def create_slider_service(slider_data: SliderRequest, image_file) -> dict:
     """Create a new slider with Cloudinary image upload"""

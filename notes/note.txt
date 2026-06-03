@@ -1,0 +1,32 @@
+១. auth_schema.py (អ្នកយាមទ្វារ / Validator)
+បច្ចេកវិទ្យាប្រើប្រាស់: Pydantic (BaseModel)
+
+តួនាទី: វាឈរនៅមាត់ទ្វារ API ដើម្បីត្រួតពិនិត្យ (Validate) ទិន្នន័យដែល Mobile App បញ្ជូនមក ឬបោះត្រឡប់ទៅវិញ។
+
+លក្ខណៈពិសេស: វាមើលឃើញរបស់ដែល Database មិនត្រូវការ។
+
+ឧទាហរណ៍៖ វាមាន Field confirm_password ដើម្បីឆែកមើលថា User វាយត្រូវគ្នាឬអត់ ប៉ុន្តែយើងមិនយក confirm_password ទៅ Save ក្នុង Database ទេ។
+
+២. auth_model.py (រចនាសម្ព័ន្ធក្នុងឃ្លាំង / Database Structure)
+បច្ចេកវិទ្យាប្រើប្រាស់: Dictionary ធម្មតា ឬ Dataclass (ដោយសារ MongoDB ជា NoSQL យើងមិនបាច់សរសេរ Model ស្មុគស្មាញដូច SQL ទេ)។
+
+តួនាទី: វាកំណត់ទម្រង់ទិន្នន័យ (Data Structure) ដែលត្រូវយកទៅ Save ចូលក្នុង MongoDB ផ្ទាល់តែម្តង។
+
+លក្ខណៈពិសេស: វាមានផ្ទុកនូវ Field សម្រាប់ប្រព័ន្ធដំណើរការ ដែល schema មិនមាន។
+
+ឧទាហរណ៍៖ វាមាន password_hash (កូដសម្ងាត់ដែលបានបំប្លែងរួច), created_at, updated_at, is_active ជាដើម។
+
+
+src/
+└── domains/
+    ├── auth/
+        |__ auth_model.py
+    │   ├── auth_schema.py        # កំណត់ទម្រង់ Request (Mobile Login, Admin Login)
+    │   ├── auth_service.py       # Logic រួម (ការបង្កើត Token, ការ Hash Password)
+    │   ├── mobile_auth_router.py # Route សម្រាប់ Mobile App (/api/v1/mobile/auth/...)
+    │   └── admin_auth_router.py  # Route សម្រាប់ Admin Web (/api/v1/admin/auth/...)
+    │
+    └── expertise/
+        ├── expertise_schema.py
+        ├── expertise_service.py
+        └── ...

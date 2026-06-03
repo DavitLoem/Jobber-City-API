@@ -1,6 +1,6 @@
 from datetime import datetime
 from bson import ObjectId, errors
-from src.config.mongo import collections
+from src.core.mongo import collections
 
 def insert_job(job_data: dict):
     job_col = collections("jobs")

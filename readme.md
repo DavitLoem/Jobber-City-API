@@ -14,6 +14,22 @@ A FastAPI-based authentication API with MongoDB backend.
 - Python 3.8+
 - MongoDB (local or remote)
 
+To run this application, type following commands:
+
+```bash
+# for development
+uvicorn main:app --reload --port=8000
+
+# for production
+uvicorn main:app --port=8000 --workers=4
+
+# add admin user
+python manage_db.py seed
+# reset database (drop all collections)
+python manage_db.py reset
+# reset database and add admin user
+python manage_db.py fresh
+
 ## Installation
 
 1. Clone the repository and navigate to the project directory

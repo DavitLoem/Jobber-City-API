@@ -5,8 +5,8 @@ import smtplib
 import os
 from email.mime.text import MIMEText
 from bson import ObjectId, errors
-from src.config.mongo import collections 
-from src.model.auth import JobType
+from src.core.mongo import collections 
+from src.model.auth_model import JobType
 from passlib.context import CryptContext
 
 def get_all_job_types():

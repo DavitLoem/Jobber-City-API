@@ -1,0 +1,57 @@
+from typing import Union
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from src.core.response import APIResponse
+from src.domains.auth.auth_schema import OTPChallengeResponse, OTPVerify, RefreshTokenRequest, UserLogin, TokenResponse
+from src.domains.auth.services.admin_auth_service import login_admin_user, verify_admin_login_otp
+from src.domains.auth.services.auth_service import logout_user
+from src.dependencies.dependencies import get_current_user
+
+router = APIRouter(prefix="/api/admin/auth", tags=["Admin Authentication"])
+
+@router.post(
+    "/login", 
+    response_model=APIResponse[Union[TokenResponse, OTPChallengeResponse]], 
+    summary="Admin Login"
+)
+async def admin_login(login_data: UserLogin):
+    result = await login_admin_user(login_data)
+    
+    return APIResponse(
+        success=True, 
+        message="Login successful", 
+        data=result
+    )
+
+@router.post("/verify-admin-otp", response_model=APIResponse[TokenResponse])
+async def verify_otp(otp_data: OTPVerify):
+    """
+    Route នេះទទួលយក Email និង OTP ៦ ខ្ទង់។
+    """
+    result = await verify_admin_login_otp(
+        email=otp_data.email, 
+        otp_code=otp_data.otp_code
+    )
+    
+    return APIResponse(
+        success=True,
+        message="OTP verification successful",
+        data=result
+    )
+
+@router.post("/logout", summary="Admin ចាកចេញពីគណនី (Logout)")
+async def admin_logout(
+    request_data: RefreshTokenRequest, # 🎯 ទទួលយក Refresh Token ពី Frontend (ដូច Mobile ដែរ)
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Route សម្រាប់ Admin ចាកចេញពីគណនី និងបិទសិទ្ធិ Token ចាស់។
+    """
+    # ហៅ Service របស់ Mobile មកប្រើឡើងវិញបានយ៉ាងស្រួល
+    await logout_user(request_data, str(current_user["_id"]))
+    
+    return APIResponse[None](
+        success=True,
+        message="ចាកចេញពីគណនី Admin បានជោគជ័យ",
+        data=None
+    )
