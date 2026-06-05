@@ -1,19 +1,24 @@
-from fastapi import APIRouter, status
-from typing import List
+from fastapi import APIRouter, Depends, status, Query
+from typing import List, Optional
 
 # 🎯 ១. Import APIResponse របស់អ្នក
 from src.core.response import APIResponse 
 
 # Import Schemas
+from src.dependencies.dependencies import RoleChecker
 from src.domains.location.location_schema import (
     ProvinceRequest, ProvinceResponse, 
     DistrictRequest, DistrictResponse
 )
 import src.domains.location.services.admin_location_service as admin_service
 
+# 🎯 ២. បង្កើតអថេរសម្រាប់ឆែកសិទ្ធិ (អនុញ្ញាតតែ "admin" ប៉ុណ្ណោះ)
+require_admin = RoleChecker(["admin"])
+
 router = APIRouter(
     prefix="/api/v1/admin/locations",
-    tags=["Admin - Locations"]
+    tags=["Admin Locations"],
+    dependencies=[Depends(require_admin)]
 )
 
 # ==========================================
@@ -34,12 +39,19 @@ async def create_province_route(data: ProvinceRequest):
 
 # 🎯 សម្រាប់ List ត្រូវដាក់ List នៅខាងក្នុង: APIResponse[List[ProvinceResponse]]
 @router.get("/provinces", response_model=APIResponse[List[ProvinceResponse]])
-async def get_all_provinces_route():
-    """Admin ទាញយកបញ្ជីខេត្តទាំងអស់"""
-    result = await admin_service.get_all_provinces_admin()
+async def get_all_provinces_route(
+    # 🎯 កំណត់ Query Parameters ឱ្យ API
+    search: Optional[str] = Query(None, description="ស្វែងរកតាមឈ្មោះខេត្ត (ខ្មែរ ឬអង់គ្លេស)"),
+    is_active: Optional[bool] = Query(None, description="ចម្រោះយកតែខេត្តដែលបើក ឬបិទ (true/false)")
+):
+    """Admin ទាញយកបញ្ជីខេត្តទាំងអស់ (អាច Search និង Filter បាន)"""
+    
+    # បោះទិន្នន័យទៅឱ្យ Service
+    result = await admin_service.get_all_provinces_admin(search=search, is_active=is_active)
+    
     return APIResponse(
         success=True,
-        message="Provinces retrieved successfully",
+        message="ទាញយកបញ្ជីខេត្តជោគជ័យ",
         data=result
     )
 
@@ -79,9 +91,17 @@ async def create_district_route(data: DistrictRequest):
     )
 
 @router.get("/provinces/{province_id}/districts", response_model=APIResponse[List[DistrictResponse]])
-async def get_districts_by_province_route(province_id: str):
-    """Admin ទាញយកបញ្ជីស្រុកទាំងអស់នៅក្នុងខេត្តណាមួយ"""
-    result = await admin_service.get_districts_by_province_admin(province_id)
+async def get_districts_by_province_route(
+    province_id: str,
+    search: Optional[str] = Query(None, description="ស្វែងរកតាមឈ្មោះស្រុក (ខ្មែរ ឬអង់គ្លេស)"),
+    is_active: Optional[bool] = Query(None, description="ចម្រោះយកតែស្រុកដែលបើក ឬបិទ (true/false)")
+):
+    """Admin ទាញយកបញ្ជីស្រុកទាំងអស់នៅក្នុងខេត្តណាមួយ (អាច Search និង Filter បាន)"""
+    result = await admin_service.get_districts_by_province_admin(
+        province_id,
+        search=search,
+        is_active=is_active
+    )
     return APIResponse(
         success=True,
         message="Districts retrieved successfully",

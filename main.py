@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from dotenv import load_dotenv
 import os
+import time
 
 
 load_dotenv()
@@ -19,14 +20,41 @@ app = FastAPI(
     swagger_ui_parameters={"docExpansion": "none"}
 )
 
+# កំណត់ថាអ្នកណាខ្លះ (Domain ណាខ្លះ) អាចហៅ API នេះបាន
+origins = [
+    "http://localhost:3000",      # សម្រាប់ React/Next.js
+    "http://localhost:8080",      # សម្រាប់ Vue
+    "http://localhost:5000",      # សម្រាប់ Flutter Web
+    # "https://www.jobbercity.com" # ដាក់ Domain ពិតប្រាកដរបស់អ្នកនៅពេល Deploy
+    "*"                           # ឬដាក់ "*" ដើម្បីអនុញ្ញាតឱ្យហៅពីគ្រប់កន្លែង (ល្អសម្រាប់ការធ្វើតេស្ត)
+]
+
 # បន្ថែម CORS Middleware សម្រាប់អនុញ្ញាតឱ្យ Admin Web អាចហៅ API នេះបាន
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # ពេលដាក់ Production គួរដូរជា Domain របស់ Admin Web (ឧ. ["https://admin.jobbercity.com"])
+    allow_origins=origins, # ពេលដាក់ Production គួរដូរជា Domain របស់ Admin Web (ឧ. ["https://admin.jobbercity.com"])
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+#​  ២. Custom Middleware (វាស់រយៈពេលដំណើរការ API)
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.time()
+    
+    # បញ្ជូន Request ទៅកាន់ Route (Endpoint) ដើម្បីដំណើរការ
+    response = await call_next(request)
+    
+    process_time = time.time() - start_time
+    
+    # បន្ថែម Header ថ្មីឈ្មោះ 'X-Process-Time' ចូលក្នុង Response
+    response.headers["X-Process-Time"] = str(process_time)
+    
+    # ស្រេចចិត្ត: អ្នកអាច print ចេញមកក្រៅដើម្បីងាយស្រួលមើលក្នុង Terminal
+    print(f"[{request.method}] {request.url.path} ចំណាយពេល: {process_time:.4f} វិនាទី")
+    
+    return response
 
 # Redirect root URL
 @app.get("/", include_in_schema=False)
@@ -44,6 +72,7 @@ from src.domains.auth.router.admin_auth_router import router as admin_auth_route
 from src.domains.category.routes.category_route import router as category_router
 from src.domains.category.routes.admin_category_route import router as admin_category_router
 from src.domains.location.routes.admin_location_route import router as admin_location_router
+from src.domains.location.routes.mobile_location_router import router as mobile_location_router
 
 # Admin Routes
 app.include_router(admin_auth_router)
@@ -53,4 +82,5 @@ app.include_router(admin_location_router)
 # Mobile App Routes
 app.include_router(auth_router)
 app.include_router(category_router)
+app.include_router(mobile_location_router)
 

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 from fastapi import HTTPException
 from bson import ObjectId
 from src.core.mongo import provinces_collection, districts_collection
@@ -47,9 +48,25 @@ async def create_province(data: ProvinceRequest) -> dict:
     new_province["id"] = str(result.inserted_id)
     return new_province
 
-async def get_all_provinces_admin() -> list[dict]:
-    """ទាញយកខេត្តទាំងអស់សម្រាប់ Admin (ទាំង Active និង Inactive)"""
-    cursor = provinces_collection.find({}).sort([("sort_order", 1), ("name_en", 1)])
+async def get_all_provinces_admin(search: Optional[str] = None, is_active: Optional[bool] = None) -> list[dict]:
+    """ទាញយកខេត្តទាំងអស់ ព្រមទាំងមានមុខងារ Search និង Filter"""
+    
+    # ១. បង្កើតប្រអប់លក្ខខណ្ឌទទេរមួយ
+    query = {}
+
+    # ២. បើមានគេបោះ Filter (is_active) មក យើងថែមវាចូល Query
+    if is_active is not None:
+        query["is_active"] = is_active
+
+    # ៣. បើមានគេបោះពាក្យ Search មក យើងប្រើ $regex ដើម្បីស្វែងរក (Case-insensitive)
+    if search:
+        query["$or"] = [
+            {"name_km": {"$regex": search, "$options": "i"}}, # "i" មានន័យថាអត់ប្រកាន់អក្សរធំតូច
+            {"name_en": {"$regex": search, "$options": "i"}}
+        ]
+
+    # ៤. ទាញយកទិន្នន័យដោយប្រើ Query ដែលបានរៀបចំ
+    cursor = provinces_collection.find(query).sort([("sort_order", 1), ("name_en", 1)])
     provinces = await cursor.to_list(length=100)
     
     for prov in provinces:
@@ -146,12 +163,26 @@ async def create_district(data: DistrictRequest) -> dict:
     new_district["province_id"] = str(new_district["province_id"])
     return new_district
 
-async def get_districts_by_province_admin(province_id: str) -> list[dict]:
-    """ទាញយកស្រុកទាំងអស់នៅក្នុងខេត្តណាមួយ"""
+async def get_districts_by_province_admin(province_id: str, search: Optional[str] = None, is_active: Optional[bool] = None) -> list[dict]:
+    """ទាញយកស្រុកទាំងអស់នៅក្នុងខេត្តណួយ ព្រមទាំងមានមុខងារ Search និង Filter"""
     if not ObjectId.is_valid(province_id):
         raise HTTPException(status_code=400, detail="Invalid province ID")
 
-    cursor = districts_collection.find({"province_id": ObjectId(province_id)}).sort([("sort_order", 1), ("name_en", 1)])
+    # build query with required province_id
+    query = {"province_id": ObjectId(province_id)}
+
+    # filter by is_active if provided
+    if is_active is not None:
+        query["is_active"] = is_active
+
+    # search by name_km or name_en (case-insensitive)
+    if search:
+        query["$or"] = [
+            {"name_km": {"$regex": search, "$options": "i"}},
+            {"name_en": {"$regex": search, "$options": "i"}}
+        ]
+
+    cursor = districts_collection.find(query).sort([("sort_order", 1), ("name_en", 1)])
     districts = await cursor.to_list(length=200)
     
     for dist in districts:

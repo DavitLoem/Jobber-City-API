@@ -9,7 +9,7 @@ from src.dependencies.dependencies import get_current_user
 from src.domains.auth.services.oauth_service import login_with_google
 
 # បង្កើត Router សម្រាប់ Mobile Auth
-router = APIRouter(prefix="/api/auth", tags=["Mobile Authentication"])
+router = APIRouter(prefix="/api/auth", tags=["Mobile - Authentication"])
 
 @router.get("/roles", summary="ទាញយកបញ្ជី Role សម្រាប់ការចុះឈ្មោះ")
 async def get_available_roles():
