@@ -2,11 +2,9 @@ from fastapi import APIRouter, Depends, Query # 🎯 Import Query
 from typing import List, Optional # 🎯 Import Optional
 
 from src.core.response import APIResponse
-from src.dependencies.dependencies import RoleChecker, get_current_user
+from src.dependencies.dependencies import require_mobile_users
 from src.domains.location.location_schema import ProvinceResponse, DistrictResponse
 import src.domains.location.services.mobile_location_service as mobile_service
-
-require_mobile_users = RoleChecker(["employer", "employee"])
 
 router = APIRouter(
     prefix="/api/locations",

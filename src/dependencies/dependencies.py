@@ -52,5 +52,5 @@ class RoleChecker:
     
 require_admin = RoleChecker(["admin"])
 require_employer = RoleChecker(["employer"])
-require_employee = RoleChecker(["employee"])
-require_mobile_users = RoleChecker(["employer", "employee"])
+require_employee = RoleChecker(["seeker"])
+require_mobile_users = RoleChecker(["employer", "seeker"])

@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr, ConfigDict, Field, model_validator
 
 # 1. កំណត់ប្រភេទ Role ឱ្យច្បាស់លាស់ (ជំនួស JobType ចាស់)
 class RoleEnum(str, Enum):
-    EMPLOYEE = "employee"
+    EMPLOYEE = "seeker"
     EMPLOYER = "employer"
     # ADMIN = "admin"
 
@@ -18,8 +18,8 @@ class UserRegister(BaseModel):
     email: EmailStr # តម្រូវឱ្យមាន Email ព្រោះយើងប្រើ Email សម្រាប់ OTP
     phone_number: Optional[str] = Field(None, max_length=20, description="Optional contact number")
     password: str = Field(..., min_length=8, max_length=50, repr=False)
-    role: RoleEnum = Field(..., description="Role: 'employee' or 'employer'")
-    
+    role: RoleEnum = Field(..., description="Role: 'seeker' or 'employer'")
+
     # 🎯 នេះគឺជាការកំណត់ Example Value នៅក្នុង Swagger UI
     model_config = ConfigDict(
         json_schema_extra={
@@ -28,7 +28,7 @@ class UserRegister(BaseModel):
                 "email": "dara.sok@example.com",
                 "phone_number": "012345678",
                 "password": "StrongPassword123!",
-                "role": "employee" 
+                "role": "seeker" 
             }
         }
     )
@@ -41,7 +41,7 @@ class UserLogin(BaseModel):
 # 🎯 ថ្មី: Schema សម្រាប់អ្នកចុះឈ្មោះ ឬ Login តាម Google
 class GoogleAuthRequest(BaseModel):
     id_token: str = Field(..., description="Token received from Google Sign-In SDK")
-    role: RoleEnum = Field(default=RoleEnum.EMPLOYEE, description="Role: 'employee' or 'employer'")
+    role: RoleEnum = Field(default=RoleEnum.EMPLOYEE, description="Role: 'seeker' or 'employer'")
 
 # Schema សម្រាប់សុំកូដ OTP ពេលភ្លេចពាក្យសម្ងាត់
 class ForgotPasswordRequest(BaseModel):

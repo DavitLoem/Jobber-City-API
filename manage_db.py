@@ -1,6 +1,8 @@
 import sys
 import asyncio
 from datetime import datetime, timezone
+
+from pymongo import UpdateOne
 from src.core.mongo import db # ទីតាំង Database របស់អ្នក
 from src.core.security import hash_password # ត្រូវមាន Function នេះដើម្បីបង្កើត Password
 
@@ -21,24 +23,15 @@ async def migrate_fresh():
         print(f"[ERROR] Unexpected error in migrate_fresh: {e}")
 
 async def seed_database():
-    print("🌱 កំពុងបញ្ជូលទិន្នន័យសាកល្បង (Seeding)...")
+    print("🌱 Seeding...")
     try:
         users_collection = db["users"]
-        
-        # 🎯 ការពារការបញ្ជូលទិន្នន័យជាន់គ្នា (បើគាត់វាយ command seed ច្រើនដង)
-        existing_admin = await users_collection.find_one({"email": "admin@app.com"})
-        if existing_admin:
-            print("⚠️ ទិន្នន័យមានរួចរាល់ហើយ! មិនចាំបាច់ Seed ម្ដងទៀតទេ។ (Password: password123)")
-            return
-
-        # កំណត់ Password រួមមួយសម្រាប់ងាយស្រួល Test
         default_password = hash_password("password123")
         now = datetime.now(timezone.utc)
 
-        # បង្កើតទិន្នន័យគណនីតេស្តទៅតាម Role នីមួយៗ
         seed_users = [
             {
-                "name": "Super Admin",
+                "name": "Super Admin 1",
                 "email": "roronoazoro11502@gmail.com",
                 "password_hash": default_password,
                 "auth_provider": "local",
@@ -46,11 +39,11 @@ async def seed_database():
                 "is_active": True,
                 "is_profile_completed": True,
                 "verified_at": now,
-                "created_at": now,
+                "created_at": now, # អ្នកអាចលុប created_at ចេញក៏បាន ព្រោះប្រព័ន្ធ Upsert អាចកំណត់ $setOnInsert
                 "updated_at": now
             },
             {
-                "name": "Super Admin",
+                "name": "Super Admin 2",
                 "email": "vitloem@gmail.com",
                 "password_hash": default_password,
                 "auth_provider": "local",
@@ -58,14 +51,41 @@ async def seed_database():
                 "is_active": True,
                 "is_profile_completed": True,
                 "verified_at": now,
-                "created_at": now,
                 "updated_at": now
             },
+            {
+                "name": "Seat Satya",
+                "email": "seatsatya168@gmail.com",
+                "password_hash": default_password,
+                "auth_provider": "local",
+                "role": "admin",
+                "is_active": True,
+                "is_profile_completed": True,
+                "verified_at": now,
+                "updated_at": now
+            }, 
         ]
 
-        # បញ្ចូលទិន្នន័យទាំងអស់ទៅក្នុង Database ក្នុងពេលតែមួយ
-        await users_collection.insert_many(seed_users)
-        print("✅ ជោគជ័យ! ទិន្នន័យ Admin, Employer និង Employee ត្រូវបានបញ្ជូល។ (Password: password123)")
+        # 🎯 ប្រើប្រាស់ Bulk Write និង Upsert
+        operations = []
+        for user in seed_users:
+            # យក email ជាគោល សម្រាប់ឆែកថាតើ user នេះមានរួចរាល់ឬនៅ
+            email_to_check = user.pop("email") 
+            
+            # ទាញយក និងលុប created_at ចេញពី $set បើវាមាន ដើម្បីការពារ Conflict ជាមួយ $setOnInsert
+            user.pop("created_at", None)
+            
+            operations.append(
+                UpdateOne(
+                    {"email": email_to_check}, # លក្ខខណ្ឌស្វែងរក
+                    {"$set": user, "$setOnInsert": {"email": email_to_check, "created_at": now}}, 
+                    upsert=True # ឆែកផង បញ្ជូលផង ក្នុងពេលតែមួយ
+                )
+            )
+
+        if operations:
+            result = await users_collection.bulk_write(operations)
+            print(f"✅ ជោគជ័យ! បញ្ជូលថ្មី: {result.upserted_count}, កែប្រែ: {result.modified_count}")
         
     except Exception as e:
         print(f"មានបញ្ហាក្នុងការបញ្ជូលទិន្នន័យ (Seed): {e}")
