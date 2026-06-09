@@ -16,7 +16,7 @@ import src.domains.location.services.admin_location_service as admin_service
 require_admin = RoleChecker(["admin"])
 
 router = APIRouter(
-    prefix="/api/v1/admin/locations",
+    prefix="/api/admin/locations",
     tags=["Admin Locations"],
     dependencies=[Depends(require_admin)]
 )
