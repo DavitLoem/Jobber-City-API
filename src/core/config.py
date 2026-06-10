@@ -8,17 +8,20 @@ class Settings(BaseSettings):
     # 3rd Party
     GOOGLE_CLIENT_ID: str
     
-    # Security Policies (មានតម្លៃ Default ស្រាប់ ការពារក្រែងភ្លេចដាក់ក្នុង .env)
+    # Security Policies
     MAX_LOGIN_ATTEMPTS: int = 5
     LOCKOUT_MINUTES: int = 15
     REQUIRE_ADMIN_OTP: bool = False
 
-    # 🎯 នេះគឺជាទម្រង់ថ្មីរបស់ Pydantic V2 ក្នុងការហៅ .env
+    # 🎯 Cloudinary Configurations
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
+
     model_config = SettingsConfigDict(
         env_file=".env", 
         env_file_encoding="utf-8",
-        extra="ignore" # បើក្នុង .env មានអថេរផ្សេងទៀតដែលមិនបានប្រកាសក្នុងនេះ វានឹងរំលងអត់ Error ទេ
+        extra="ignore" 
     )
 
-# បង្កើត Instance មួយនេះដើម្បី Import យកទៅប្រើប្រាស់គ្រប់ទីកន្លែង
 settings = Settings()

@@ -1,32 +1,32 @@
-import os
 import cloudinary
-from cloudinary.uploader import upload
-from cloudinary.utils import cloudinary_url
+from cloudinary.uploader import upload, destroy
+from src.core.config import settings  # 🎯 ទាញយក settings ពី config មកប្រើ
 
+# 🎯 កំណត់ Configuration ដោយប្រើប្រាស់ Pydantic Settings
 cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+    api_key=settings.CLOUDINARY_API_KEY,
+    api_secret=settings.CLOUDINARY_API_SECRET,
     secure=True
 )
 
-def upload_image(file, folder="jobber_city"):
+def upload_image(file, folder: str = "jobber_city") -> dict:
     """
     Upload an image to Cloudinary
     
     Args:
-        file: File object or path to upload
+        file: File object (FastAPI UploadFile.file) or file path
         folder: Cloudinary folder to store the image
         
     Returns:
-        dict: Contains secure_url, public_id, etc.
+        dict: Contains success status, url, public_id, etc.
     """
     try:
         result = upload(
             file,
             folder=folder,
             resource_type="auto",
-            allowed_formats=["jpg", "jpeg", "png", "gif", "webp"]
+            allowed_formats=["jpg", "jpeg", "png", "webp"] # ដក gif ចេញប្រសិនបើមិនចង់ឱ្យ Seeker ដាក់រូប Profile ចលនា
         )
         return {
             "success": True,
@@ -42,7 +42,7 @@ def upload_image(file, folder="jobber_city"):
             "message": str(e)
         }
 
-def delete_image(public_id):
+def delete_image(public_id: str) -> dict:
     """
     Delete an image from Cloudinary
     
@@ -53,12 +53,15 @@ def delete_image(public_id):
         dict: Result of deletion
     """
     try:
-        from cloudinary.api import delete_resources
-        result = delete_resources([public_id], resource_type="image", type="upload")
-        return {
-            "success": True,
-            "result": result
-        }
+        # 🎯 ប្រើប្រាស់ destroy ជំនួសឱ្យ delete_resources សម្រាប់លុបឯកសារទោល
+        result = destroy(public_id, resource_type="image")
+        
+        # Cloudinary នឹង return {"result": "ok"} ប្រសិនបើជោគជ័យ
+        if result.get("result") == "ok":
+            return {"success": True}
+        else:
+            return {"success": False, "message": result.get("result", "Unknown error")}
+            
     except Exception as e:
         return {
             "success": False,

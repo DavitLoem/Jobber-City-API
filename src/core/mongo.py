@@ -33,3 +33,6 @@ categories_collection = collections("categories")
 provinces_collection = collections("job_provinces")
 districts_collection = collections("job_districts")
 
+# Profiles
+seeker_profiles_collection = collections("seeker_profiles")
+

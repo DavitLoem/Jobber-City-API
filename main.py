@@ -52,7 +52,7 @@ async def add_process_time_header(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
     
     # ស្រេចចិត្ត: អ្នកអាច print ចេញមកក្រៅដើម្បីងាយស្រួលមើលក្នុង Terminal
-    print(f"[{request.method}] {request.url.path} ចំណាយពេល: {process_time:.4f} វិនាទី")
+    print(f"[{request.method}] {request.url.path} - Process Time: {process_time:.4f} seconds")
     
     return response
 
@@ -73,6 +73,8 @@ from src.domains.category.routes.category_route import router as category_router
 from src.domains.category.routes.admin_category_route import router as admin_category_router
 from src.domains.location.routes.admin_location_route import router as admin_location_router
 from src.domains.location.routes.mobile_location_router import router as mobile_location_router
+from src.domains.profile.seeker_profile.routes.core_profile_router import router as seeker_profile_router
+from src.domains.profile.seeker_profile.routes.attachment_router import router as seeker_attachment_router
 
 # Admin Routes
 app.include_router(admin_auth_router)
@@ -83,4 +85,8 @@ app.include_router(admin_location_router)
 app.include_router(auth_router)
 app.include_router(category_router)
 app.include_router(mobile_location_router)
+
+# Seeker Routes
+app.include_router(seeker_profile_router)
+app.include_router(seeker_attachment_router)
 

@@ -26,7 +26,8 @@ async def register_mobile_user(user_data: UserRegister) -> dict:
             await users_collection.update_one(
                 {"_id": existing_user["_id"]},
                 {"$set": {
-                    "name": user_data.name,
+                    "first_name": user_data.first_name,
+                    "last_name": user_data.last_name,
                     "phone_number": user_data.phone_number,
                     "password_hash": hashed_pwd,
                     "role": user_data.role.value,
@@ -40,7 +41,8 @@ async def register_mobile_user(user_data: UserRegister) -> dict:
     else:
         # ករណីថ្មីស្រឡាង: បង្កើត User ចូល Database ជាធម្មតា
         new_user_dict = create_user_model(
-            name=user_data.name,
+            first_name=user_data.first_name,
+            last_name=user_data.last_name,
             email=user_data.email,
             phone_number=user_data.phone_number,
             password_hash=hashed_pwd,
@@ -125,7 +127,8 @@ async def login_mobile_user(login_data: UserLogin) -> dict:
         "token_type": "bearer",
         "user": {
             "id": str(user["_id"]),
-            "name": user["name"],
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
             "email": user["email"],
             "role": user["role"],
             "is_profile_completed": user.get("is_profile_completed", False),
@@ -158,7 +161,8 @@ async def verify_otp_and_login(otp_data: OTPVerify) -> dict:
         "token_type": "bearer",
         "user": {
             "id": str(user["_id"]),
-            "name": user["name"],
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
             "email": user["email"],
             "role": user["role"],
             "is_profile_completed": user.get("is_profile_completed", False),

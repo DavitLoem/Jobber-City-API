@@ -14,7 +14,8 @@ class RoleEnum(str, Enum):
 
 # Schema សម្រាប់ចុះឈ្មោះ (Mobile App)
 class UserRegister(BaseModel):
-    name: str = Field(..., min_length=2, max_length=100)
+    first_name: str = Field(..., min_length=2, max_length=100)
+    last_name: Optional[str] = Field(default=None, min_length=2, max_length=100)
     email: EmailStr # តម្រូវឱ្យមាន Email ព្រោះយើងប្រើ Email សម្រាប់ OTP
     phone_number: Optional[str] = Field(None, max_length=20, description="Optional contact number")
     password: str = Field(..., min_length=8, max_length=50, repr=False)
@@ -24,7 +25,8 @@ class UserRegister(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "name": "Sok Dara",
+                "first_name": "Dara",
+                "last_name": "Sok",
                 "email": "dara.sok@example.com",
                 "phone_number": "012345678",
                 "password": "StrongPassword123!",
@@ -94,7 +96,8 @@ class ChangePasswordRequest(BaseModel):
 # Schema សម្រាប់បង្ហាញព័ត៌មាន User (មិនបោះ Password ទៅវិញទេ)
 class UserResponse(BaseModel):
     id: str
-    name: str
+    first_name: str
+    last_name: str
     email: str
     role: str
     avatar_url: Optional[str] = None

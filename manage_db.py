@@ -31,7 +31,8 @@ async def seed_database():
 
         seed_users = [
             {
-                "name": "Super Admin 1",
+                "first_name": "Super",
+                "last_name": "Admin",
                 "email": "roronoazoro11502@gmail.com",
                 "password_hash": default_password,
                 "auth_provider": "local",
@@ -43,7 +44,8 @@ async def seed_database():
                 "updated_at": now
             },
             {
-                "name": "Super Admin 2",
+                "first_name": "Super",
+                "last_name": "Admin 2",
                 "email": "vitloem@gmail.com",
                 "password_hash": default_password,
                 "auth_provider": "local",
@@ -54,7 +56,8 @@ async def seed_database():
                 "updated_at": now
             },
             {
-                "name": "Seat Satya",
+                "first_name": "Super",
+                "last_name": "Admin 3",
                 "email": "seatsatya168@gmail.com",
                 "password_hash": default_password,
                 "auth_provider": "local",
