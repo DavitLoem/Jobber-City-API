@@ -13,12 +13,22 @@ async def upload_profile_image(user_id: str, file: UploadFile) -> dict:
     if not file.content_type.startswith("image/"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="ឯកសារដែលបានជ្រើសរើសមិនមែនជារូបភាពទេ។"
+            detail="Only image files are allowed!"
         )
         
     # ២. ត្រួតពិនិត្យទំហំឯកសារ (ឧទាហរណ៍ កំណត់ត្រឹម 5MB)
-    # ចំណាំ: FastAPI ទាមទារឱ្យយើងអាន (read) file ទើបដឹងទំហំ 
-    # តែយើងអាចទុកឱ្យ Cloudinary បដិសេធដោយខ្លួនឯងក៏បាន ដើម្បីកុំឱ្យស្មុគស្មាញកូដនៅទីនេះ។
+    file.file.seek(0, 2) # ប្រើបច្ចេកទេស Seek រំកិលទៅចុងឯកសារ ដើម្បីអានទំហំ (Bytes)
+    file_size = file.file.tell() 
+    file.file.seek(0) # 🎯 សំខាន់បំផុត! ត្រូវរំកិលមកដើម (0) វិញ ទើប Cloudinary អាច Upload ចេញ
+    
+    # កំណត់ទំហំអតិបរមា 5MB (5 * 1024 * 1024 bytes)
+    MAX_FILE_SIZE = 5 * 1024 * 1024 
+    
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, # លេខកូដ 413 គឺសម្រាប់បញ្ហា File ធំពេក
+            detail="Image size too large! Please upload an image smaller than 5MB."
+        )
 
     # ៣. ធ្វើការ Upload ទៅ Cloudinary (ប្រើ Cloudinary Utility ដែលយើងបានរៀបចំ)
     upload_result = upload_image(file.file, folder="jobber_city/profiles")
@@ -26,7 +36,7 @@ async def upload_profile_image(user_id: str, file: UploadFile) -> dict:
     if not upload_result.get("success"):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"បរាជ័យក្នុងការ Upload រូបភាព: {upload_result.get('message')}"
+            detail=f"Failed to upload image: {upload_result.get('message')}"
         )
 
     new_image_url = upload_result.get("url")
@@ -40,7 +50,7 @@ async def upload_profile_image(user_id: str, file: UploadFile) -> dict:
         # បើគាត់មិនទាន់មាន Profile ទេ (មិនទាន់ Update ព័ត៌មានគោលសោះ) មិនគួរឱ្យគាត់ Upload រូបមុនទេ
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="សូមកែប្រែព័ត៌មានផ្ទាល់ខ្លួនរបស់អ្នកជាមុនសិន មុននឹងបញ្ចូលរូបថត។"
+            detail="Please update your profile information first before uploading a profile image."
         )
 
     # Update URL ថ្មី និងគណនាភាគរយ

@@ -75,6 +75,7 @@ from src.domains.location.routes.admin_location_route import router as admin_loc
 from src.domains.location.routes.mobile_location_router import router as mobile_location_router
 from src.domains.profile.seeker_profile.routes.core_profile_router import router as seeker_profile_router
 from src.domains.profile.seeker_profile.routes.attachment_router import router as seeker_attachment_router
+from src.domains.profile.seeker_profile.routes.experience_router import router as seeker_experience_router
 
 # Admin Routes
 app.include_router(admin_auth_router)
@@ -89,4 +90,5 @@ app.include_router(mobile_location_router)
 # Seeker Routes
 app.include_router(seeker_profile_router)
 app.include_router(seeker_attachment_router)
+app.include_router(seeker_experience_router)
 
