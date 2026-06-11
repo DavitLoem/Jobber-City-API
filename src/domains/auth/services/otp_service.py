@@ -10,8 +10,8 @@ otps_collection = collections("otps")
 
 async def generate_and_send_otp(user_id, email: str, purpose: str = "register"):
     """មុខងារសម្រាប់បង្កើតលេខកូដ Save ចូល DB និងបាញ់អ៊ីមែល"""
-    # 1. បង្កើតលេខកូដ Random ៦ ខ្ទង់
-    otp_code_plain = str(random.randint(100000, 999999))
+    # 1. បង្កើតលេខកូដ Random ៤ ខ្ទង់
+    otp_code_plain = str(random.randint(1000, 9999))
     otp_hash = hash_password(otp_code_plain)
 
     # 2. Save ចូល Database

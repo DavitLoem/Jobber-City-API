@@ -51,7 +51,7 @@ class ForgotPasswordRequest(BaseModel):
     
 class ResetPasswordRequest(BaseModel):
     email: EmailStr = Field(..., description="Email address associated with the account")
-    otp_code: str = Field(..., min_length=6, max_length=6, description="OTP code sent to the user's email")
+    otp_code: str = Field(..., min_length=4, max_length=4, description="OTP code sent to the user's email")
     new_password: str = Field(..., min_length=8, description="New password")
     confirm_password: str = Field(..., description="Confirm new password")
 
@@ -61,10 +61,10 @@ class ResetPasswordRequest(BaseModel):
             raise ValueError("ពាក្យសម្ងាត់ថ្មី និងការបញ្ជាក់ពាក្យសម្ងាត់មិនត្រូវគ្នាទេ")
         return self
 
-# Schema សម្រាប់ផ្ទៀងផ្ទាត់កូដ OTP (ប្តូរពី 4 ខ្ទង់ ទៅ 6 ខ្ទង់ដើម្បីសុវត្ថិភាពខ្ពស់)
+# Schema សម្រាប់ផ្ទៀងផ្ទាត់កូដ OTP
 class OTPVerify(BaseModel):
     email: EmailStr
-    otp_code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
+    otp_code: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
  
 # ​For admin   
 class OTPChallengeResponse(BaseModel):

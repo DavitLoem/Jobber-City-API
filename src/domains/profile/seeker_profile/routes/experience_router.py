@@ -10,7 +10,7 @@ from src.dependencies.dependencies import require_seeker
 
 router = APIRouter(
     prefix="/api/seeker/profile/experiences",
-    tags=["Seeker - Profile Experiences"],
+    tags=["Mobile - Seeker Experiences"],
     dependencies=[Depends(require_seeker)]
 )
 
