@@ -76,6 +76,9 @@ from src.domains.location.routes.mobile_location_router import router as mobile_
 from src.domains.profile.seeker_profile.routes.core_profile_router import router as seeker_profile_router
 from src.domains.profile.seeker_profile.routes.attachment_router import router as seeker_attachment_router
 from src.domains.profile.seeker_profile.routes.experience_router import router as seeker_experience_router
+from src.domains.profile.seeker_profile.routes.education_router import router as seeker_education_router
+from src.domains.profile.seeker_profile.routes.training_router import router as seeker_training_router
+from src.domains.profile.seeker_profile.routes.language_router import router as seeker_language_router
 
 # Admin Routes
 app.include_router(admin_auth_router)
@@ -91,4 +94,8 @@ app.include_router(mobile_location_router)
 app.include_router(seeker_profile_router)
 app.include_router(seeker_attachment_router)
 app.include_router(seeker_experience_router)
+app.include_router(seeker_education_router)
+app.include_router(seeker_training_router)
+app.include_router(seeker_language_router)
+
 

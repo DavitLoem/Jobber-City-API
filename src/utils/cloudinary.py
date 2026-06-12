@@ -10,6 +10,29 @@ cloudinary.config(
     secure=True
 )
 
+def upload_document(file, folder="jobber_city/resumes"):
+    """
+    មុខងារសម្រាប់ Upload ឯកសារ (PDF, DOCX) ទៅ Cloudinary
+    """
+    try:
+        result = upload(
+            file,
+            folder=folder,
+            resource_type="auto", # auto អនុញ្ញាតឱ្យ Cloudinary ស្គាល់ PDF ដោយស្វ័យប្រវត្តិ
+            allowed_formats=["pdf", "doc", "docx"]
+        )
+        return {
+            "success": True,
+            "url": result.get("secure_url"),
+            "public_id": result.get("public_id"),
+            "format": result.get("format")
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e)
+        }
+
 def upload_image(file, folder: str = "jobber_city") -> dict:
     """
     Upload an image to Cloudinary

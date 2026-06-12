@@ -9,7 +9,7 @@ require_seeker = RoleChecker(["seeker"])
 
 router = APIRouter(
     prefix="/api/seeker/profile/educations",
-    tags=["Seeker - Profile Educations"],
+    tags=["Mobile - Seeker Educations"],
     dependencies=[Depends(require_seeker)]
 )
 

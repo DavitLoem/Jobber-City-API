@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     
     # 3rd Party
     GOOGLE_CLIENT_ID: str
+    GEMINI_API_KEY: str
     
     # Security Policies
     MAX_LOGIN_ATTEMPTS: int = 5

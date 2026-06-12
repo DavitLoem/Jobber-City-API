@@ -31,3 +31,7 @@ aiosmtplib
 
 # Templating
 jinja2
+
+# cv upload
+pdfplumber
+google-genai
