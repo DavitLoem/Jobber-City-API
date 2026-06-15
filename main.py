@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from dotenv import load_dotenv
@@ -56,6 +57,35 @@ async def add_process_time_header(request: Request, call_next):
     
     return response
 
+# 🎯 បន្ថែម Custom Exception Handler នេះចូល
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    ចាប់យក Error ដែលកើតឡើងពេល User បញ្ចូលទិន្នន័យខុស Schema
+    ហើយរៀបចំវាឱ្យស្អាត ព្រមទាំងលាក់ `input` ដើម្បីសុវត្ថិភាព។
+    """
+    errors = exc.errors()
+    formatted_errors = []
+    
+    for error in errors:
+        # យកតែឈ្មោះ Field ដែល Error (ឧ. "password", "email")
+        field = error["loc"][-1] if len(error["loc"]) > 0 else "unknown_field"
+        
+        formatted_errors.append({
+            "field": field,
+            "message": error["msg"]
+        })
+        
+    # បោះ Response ត្រឡប់ទៅវិញជាទម្រង់ស្អាត (Clean JSON)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "message": "Data validation error",
+            "errors": formatted_errors
+        }
+    )
+
 # Redirect root URL
 @app.get("/", include_in_schema=False)
 async def root():
@@ -72,23 +102,38 @@ from src.domains.auth.router.admin_auth_router import router as admin_auth_route
 from src.domains.category.routes.category_route import router as category_router
 from src.domains.category.routes.admin_category_route import router as admin_category_router
 from src.domains.location.routes.admin_location_route import router as admin_location_router
-from src.domains.location.routes.mobile_location_router import router as mobile_location_router
+from src.domains.location.routes.mobile_location_router import router as location_router
 from src.domains.profile.seeker_profile.routes.core_profile_router import router as seeker_profile_router
 from src.domains.profile.seeker_profile.routes.attachment_router import router as seeker_attachment_router
 from src.domains.profile.seeker_profile.routes.experience_router import router as seeker_experience_router
 from src.domains.profile.seeker_profile.routes.education_router import router as seeker_education_router
 from src.domains.profile.seeker_profile.routes.training_router import router as seeker_training_router
 from src.domains.profile.seeker_profile.routes.language_router import router as seeker_language_router
+from src.domains.master_data.routes.job_level_router import router as admin_job_level_router
+from src.domains.master_data.routes.education_level_router import router as admin_education_level_router
+from src.domains.master_data.routes.employment_type_router import router as admin_employment_type_router
+from src.domains.master_data.routes.work_type_router import router as admin_work_type_router
+from src.domains.profile.company_profile.routes.company_profile_router import router as company_profile_router
 
+
+# =========================
 # Admin Routes
+# =========================
 app.include_router(admin_auth_router)
+# Admin Master Data Routes
 app.include_router(admin_category_router)
 app.include_router(admin_location_router)
+app.include_router(admin_job_level_router)
+app.include_router(admin_education_level_router)
+app.include_router(admin_employment_type_router)
+app.include_router(admin_work_type_router)
 
+# =========================
 # Mobile App Routes
+# =========================
 app.include_router(auth_router)
 app.include_router(category_router)
-app.include_router(mobile_location_router)
+app.include_router(location_router)
 
 # Seeker Routes
 app.include_router(seeker_profile_router)
@@ -97,5 +142,8 @@ app.include_router(seeker_experience_router)
 app.include_router(seeker_education_router)
 app.include_router(seeker_training_router)
 app.include_router(seeker_language_router)
+
+# Employer Routes (បន្ថែមនៅទីនេះពេលដែលបានបង្កើតរួចហើយ)
+app.include_router(company_profile_router)
 
 

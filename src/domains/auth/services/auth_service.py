@@ -28,7 +28,6 @@ async def register_mobile_user(user_data: UserRegister) -> dict:
                 {"$set": {
                     "first_name": user_data.first_name,
                     "last_name": user_data.last_name,
-                    "phone_number": user_data.phone_number,
                     "password_hash": hashed_pwd,
                     "role": user_data.role.value,
                     "updated_at": datetime.now(timezone.utc)
@@ -44,7 +43,6 @@ async def register_mobile_user(user_data: UserRegister) -> dict:
             first_name=user_data.first_name,
             last_name=user_data.last_name,
             email=user_data.email,
-            phone_number=user_data.phone_number,
             password_hash=hashed_pwd,
             role=user_data.role.value
         )
@@ -301,14 +299,28 @@ async def renew_access_token(data: RefreshTokenRequest) -> dict:
     payload = verify_token(data.refresh_token)
     user_id = payload.get("sub")
 
-    # 2. ឆែកក្នុង Database ក្រែងលោវាត្រូវ Admin បិទចោល (Revoked) 
+    # 2. ស្វែងរក Token នៅក្នុង Database
     saved_token = await refresh_tokens_collection.find_one({
         "token": data.refresh_token,
         "user_id": ObjectId(user_id)
     })
 
-    if not saved_token or saved_token["is_revoked"]:
-        raise HTTPException(status_code=401, detail="Invalid or revoked refresh token.")
+    # បើគ្មាន Token ក្នុង DB ទាល់តែសោះ បដិសេធចោល
+    if not saved_token:
+        raise HTTPException(status_code=401, detail="Invalid refresh token.")
+
+    # 🚨 [ចំណុចដែលកែថ្មី]: ទប់ស្កាត់ការលួចប្រើ Token ចាស់ (Token Reuse Detection)
+    if saved_token["is_revoked"]:
+        # បើ Token នេះត្រូវរលុបហើយ តែនៅមានគេព្យាយាមយកមកប្រើទៀត មានន័យថាមានគេលួចបាន Token នេះ
+        # វិធានការក្តៅ: ត្រូវ Revoke រាល់ Token ទាំងអស់របស់ User នេះ ដើម្បីបង្ខំឱ្យ Logout គ្រប់ Devices
+        await refresh_tokens_collection.update_many(
+            {"user_id": ObjectId(user_id)},
+            {"$set": {"is_revoked": True}}
+        )
+        raise HTTPException(
+            status_code=401, 
+            detail="Security alert: Token reuse detected. All sessions revoked. Please login again."
+        )
 
     # 3. ទាញយក User ដើម្បីយក Role មកញាត់ចូល Token ថ្មី
     user = await users_collection.find_one({"_id": ObjectId(user_id)})
@@ -319,7 +331,7 @@ async def renew_access_token(data: RefreshTokenRequest) -> dict:
     new_access_token = create_access_token({"sub": str(user["_id"]), "role": user["role"]})
     new_refresh_token = create_refresh_token({"sub": str(user["_id"])})
     
-    # 5. សម្លាប់ Token ចាស់ចោល ដើម្បីសុវត្ថិភាព (ការពារ Hacker លួចយករបស់ចាស់ទៅប្រើ)
+    # 5. សម្លាប់ Token ចាស់ចោល ដើម្បីសុវត្ថិភាព (ការងារនេះជោគជ័យបានលុះត្រាតែ Token នោះមិនទាន់ Revoke ពីមុន)
     await refresh_tokens_collection.update_one(
         {"_id": saved_token["_id"]},
         {"$set": {"is_revoked": True}}
@@ -329,7 +341,6 @@ async def renew_access_token(data: RefreshTokenRequest) -> dict:
     token_model = create_refresh_token_model(user_id=user["_id"], token=new_refresh_token)
     await refresh_tokens_collection.insert_one(token_model)
 
-    # ចំណាំ: យើងមិនបាច់បោះ User Profile ទៅវិញទេ ព្រោះ App មានរួចហើយ។ គេត្រូវការតែ Token ថ្មី។
     return {
         "access_token": new_access_token,
         "refresh_token": new_refresh_token,

@@ -35,4 +35,12 @@ districts_collection = collections("job_districts")
 
 # Profiles
 seeker_profiles_collection = collections("seeker_profiles")
+company_profiles_collection = collections("company_profiles")
+
+# Master Data Collections
+work_types_collection = collections("work_types")
+employment_types_collection = collections("employment_types")
+job_levels_collection = collections("job_levels")
+education_levels_collection = collections("education_levels")
+skills_collection = collections("skills")
 

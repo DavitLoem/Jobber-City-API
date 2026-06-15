@@ -28,7 +28,6 @@ class UserRegister(BaseModel):
                 "first_name": "Dara",
                 "last_name": "Sok",
                 "email": "dara.sok@example.com",
-                "phone_number": "012345678",
                 "password": "StrongPassword123!",
                 "role": "seeker" 
             }
