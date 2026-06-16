@@ -79,7 +79,8 @@ async def _generate_tokens_for_admin(user: dict) -> dict:
         "token_type": "bearer",
         "user": {
             "id": str(user["_id"]),
-            "name": user["name"],
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
             "email": user["email"],
             "role": user["role"],
             "avatar_url": user.get("avatar_url"),

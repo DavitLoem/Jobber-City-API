@@ -2,11 +2,11 @@ from datetime import datetime, timezone
 from bson import ObjectId
 
 def create_user_model(
-    name: str, 
+    first_name: str,
+    last_name: str,
     email: str, 
     role: str, 
     password_hash: str = "", # ដាក់ "" ជា Default ព្រោះ Google អត់ត្រូវការ Password ទេ
-    phone_number: str = None, 
     avatar_url: str = None,
     auth_provider: str = "local", 
     verified_at: datetime = None
@@ -14,9 +14,9 @@ def create_user_model(
     
     return {
         "_id": ObjectId(),
-        "name": name,
+        "first_name": first_name,
+        "last_name": last_name,
         "email": email,
-        "phone_number": phone_number,
         "password_hash": password_hash,
         "role": role,
         "avatar_url": avatar_url,

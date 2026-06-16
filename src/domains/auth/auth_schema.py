@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr, ConfigDict, Field, model_validator
 
 # 1. កំណត់ប្រភេទ Role ឱ្យច្បាស់លាស់ (ជំនួស JobType ចាស់)
 class RoleEnum(str, Enum):
-    EMPLOYEE = "employee"
+    EMPLOYEE = "seeker"
     EMPLOYER = "employer"
     # ADMIN = "admin"
 
@@ -14,21 +14,22 @@ class RoleEnum(str, Enum):
 
 # Schema សម្រាប់ចុះឈ្មោះ (Mobile App)
 class UserRegister(BaseModel):
-    name: str = Field(..., min_length=2, max_length=100)
+    first_name: str = Field(..., min_length=2, max_length=100)
+    last_name: Optional[str] = Field(default=None, min_length=2, max_length=100)
     email: EmailStr # តម្រូវឱ្យមាន Email ព្រោះយើងប្រើ Email សម្រាប់ OTP
     phone_number: Optional[str] = Field(None, max_length=20, description="Optional contact number")
     password: str = Field(..., min_length=8, max_length=50, repr=False)
-    role: RoleEnum = Field(..., description="Role: 'employee' or 'employer'")
-    
+    role: RoleEnum = Field(..., description="Role: 'seeker' or 'employer'")
+
     # 🎯 នេះគឺជាការកំណត់ Example Value នៅក្នុង Swagger UI
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "name": "Sok Dara",
+                "first_name": "Dara",
+                "last_name": "Sok",
                 "email": "dara.sok@example.com",
-                "phone_number": "012345678",
                 "password": "StrongPassword123!",
-                "role": "employee" 
+                "role": "seeker" 
             }
         }
     )
@@ -41,7 +42,7 @@ class UserLogin(BaseModel):
 # 🎯 ថ្មី: Schema សម្រាប់អ្នកចុះឈ្មោះ ឬ Login តាម Google
 class GoogleAuthRequest(BaseModel):
     id_token: str = Field(..., description="Token received from Google Sign-In SDK")
-    role: RoleEnum = Field(default=RoleEnum.EMPLOYEE, description="Role: 'employee' or 'employer'")
+    role: RoleEnum = Field(default=RoleEnum.EMPLOYEE, description="Role: 'seeker' or 'employer'")
 
 # Schema សម្រាប់សុំកូដ OTP ពេលភ្លេចពាក្យសម្ងាត់
 class ForgotPasswordRequest(BaseModel):
@@ -49,7 +50,7 @@ class ForgotPasswordRequest(BaseModel):
     
 class ResetPasswordRequest(BaseModel):
     email: EmailStr = Field(..., description="Email address associated with the account")
-    otp_code: str = Field(..., min_length=6, max_length=6, description="OTP code sent to the user's email")
+    otp_code: str = Field(..., min_length=4, max_length=4, description="OTP code sent to the user's email")
     new_password: str = Field(..., min_length=8, description="New password")
     confirm_password: str = Field(..., description="Confirm new password")
 
@@ -59,10 +60,10 @@ class ResetPasswordRequest(BaseModel):
             raise ValueError("ពាក្យសម្ងាត់ថ្មី និងការបញ្ជាក់ពាក្យសម្ងាត់មិនត្រូវគ្នាទេ")
         return self
 
-# Schema សម្រាប់ផ្ទៀងផ្ទាត់កូដ OTP (ប្តូរពី 4 ខ្ទង់ ទៅ 6 ខ្ទង់ដើម្បីសុវត្ថិភាពខ្ពស់)
+# Schema សម្រាប់ផ្ទៀងផ្ទាត់កូដ OTP
 class OTPVerify(BaseModel):
     email: EmailStr
-    otp_code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
+    otp_code: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
  
 # ​For admin   
 class OTPChallengeResponse(BaseModel):
@@ -94,7 +95,8 @@ class ChangePasswordRequest(BaseModel):
 # Schema សម្រាប់បង្ហាញព័ត៌មាន User (មិនបោះ Password ទៅវិញទេ)
 class UserResponse(BaseModel):
     id: str
-    name: str
+    first_name: str
+    last_name: str
     email: str
     role: str
     avatar_url: Optional[str] = None

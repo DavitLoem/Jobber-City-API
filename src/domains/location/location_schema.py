@@ -24,7 +24,7 @@ class DistrictRequest(BaseModel):
 
 class ProvinceResponse(BaseModel):
     id: str
-    name_km: str
+    name_km: Optional[str] = None
     name_en: str
     sort_order: int
     is_active: bool
@@ -32,7 +32,7 @@ class ProvinceResponse(BaseModel):
 class DistrictResponse(BaseModel):
     id: str
     province_id: str
-    name_km: str
+    name_km: Optional[str] = None
     name_en: str
     sort_order: int
     is_active: bool

@@ -10,8 +10,8 @@ otps_collection = collections("otps")
 
 async def generate_and_send_otp(user_id, email: str, purpose: str = "register"):
     """មុខងារសម្រាប់បង្កើតលេខកូដ Save ចូល DB និងបាញ់អ៊ីមែល"""
-    # 1. បង្កើតលេខកូដ Random ៦ ខ្ទង់
-    otp_code_plain = str(random.randint(100000, 999999))
+    # 1. បង្កើតលេខកូដ Random ៤ ខ្ទង់
+    otp_code_plain = str(random.randint(1000, 9999))
     otp_hash = hash_password(otp_code_plain)
 
     # 2. Save ចូល Database
@@ -28,18 +28,18 @@ async def verify_otp_code(email: str, otp_code: str, purpose: str = "register") 
     otps = await cursor.to_list(length=1)
 
     if not otps:
-        raise HTTPException(status_code=400, detail="មិនមានលេខកូដ OTP សម្រាប់អ៊ីមែលនេះទេ")
+        raise HTTPException(status_code=400, detail="No OTP found for this email")
     
     latest_otp = otps[0]
 
     if latest_otp["is_used"]:
-        raise HTTPException(status_code=400, detail="លេខកូដនេះត្រូវបានប្រើប្រាស់រួចហើយ")
+        raise HTTPException(status_code=400, detail="This OTP code has already been used")
     
     if latest_otp["expires_at"].replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="លេខកូដ OTP នេះបានផុតកំណត់ហើយ")
+        raise HTTPException(status_code=400, detail="This OTP code has expired")
 
     if not verify_password(otp_code, latest_otp["otp_hash"]):
-        raise HTTPException(status_code=400, detail="លេខកូដ OTP មិនត្រឹមត្រូវទេ")
+        raise HTTPException(status_code=400, detail="This OTP code is invalid")
 
     # បើត្រូវទាំងអស់ ដុតកម្ទេចវាចោល
     await otps_collection.update_one({"_id": latest_otp["_id"]}, {"$set": {"is_used": True}})
@@ -56,20 +56,20 @@ async def verify_otp_code(email: str, otp_code: str, purpose: str = "register") 
     otps = await cursor.to_list(length=1)
 
     if not otps:
-        raise HTTPException(status_code=400, detail="មិនមានលេខកូដ OTP សម្រាប់អ៊ីមែលនេះទេ")
+        raise HTTPException(status_code=400, detail="No OTP found for this email")
     
     latest_otp = otps[0]
 
     if latest_otp["is_used"]:
-        raise HTTPException(status_code=400, detail="លេខកូដនេះត្រូវបានប្រើប្រាស់រួចហើយ")
+        raise HTTPException(status_code=400, detail="This OTP code has already been used")
     
     if latest_otp["expires_at"].replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="លេខកូដ OTP នេះបានផុតកំណត់ហើយ")
+        raise HTTPException(status_code=400, detail="This OTP code has expired")
     
     # ប្រើ clean_otp_code ដែលបានកាត់ Space រួច យកមកផ្ទៀងផ្ទាត់
     if not verify_password(clean_otp_code, latest_otp["otp_hash"]):
-        print("❌ បរាជ័យ! លេខកូដនេះមិនត្រូវគ្នានឹង Hash ក្នុង Database ទេ")
-        raise HTTPException(status_code=400, detail="លេខកូដ OTP មិនត្រឹមត្រូវទេ")
+        print("Failed OTP verification attempt for email:", email) # Log សម្រាប់ Debug
+        raise HTTPException(status_code=400, detail="This OTP code is invalid")
 
     # បើត្រូវទាំងអស់ ដុតកម្ទេចវាចោល
     await otps_collection.update_one({"_id": latest_otp["_id"]}, {"$set": {"is_used": True}})

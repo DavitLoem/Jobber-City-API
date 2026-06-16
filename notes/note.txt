@@ -30,3 +30,28 @@ src/
         ├── expertise_schema.py
         ├── expertise_service.py
         └── ...
+
+
+src/
+└── domains/
+    └── seeker_profile/
+        │
+        ├── models/
+        │   └── profile_model.py          # 🎯 ឯកសារតែមួយ: ផ្ទុកកូដសម្រាប់វេចខ្ចប់ទិន្នន័យមុនបញ្ជូលទៅ Database ព្រោះយើងមានតែ 1 Collection.
+        │
+        ├── schemas/
+        │   ├── core_schema.py            # Pydantic សម្រាប់ Personal Info, Preferences, Skills
+        │   ├── experience_schema.py      # Pydantic សម្រាប់បន្ថែម/កែប្រែ បទពិសោធន៍
+        │   └── education_schema.py       # Pydantic សម្រាប់ ការសិក្សា និងវគ្គខ្លីៗ
+        │
+        ├── services/
+        │   ├── core_profile_service.py   # មុខងារ Get Profile ទាំងមូល និង Update ព័ត៌មានគោល
+        │   ├── experience_service.py     # មុខងារ CRUD សម្រាប់តែ Array Experiences (ប្រើ MongoDB $push, $pull, $set)
+        │   ├── education_service.py      # មុខងារ CRUD សម្រាប់តែ Array Educations/Trainings
+        │   └── attachment_service.py     # មុខងារ Upload រូបថត និង CV
+        │
+        └── routers/
+            ├── core_profile_router.py    # Router: /api/v1/seeker/profile
+            ├── experience_router.py      # Router: /api/v1/seeker/profile/experiences
+            ├── education_router.py       # Router: /api/v1/seeker/profile/educations
+            └── attachment_router.py      # Router: /api/v1/seeker/profile/uploads
