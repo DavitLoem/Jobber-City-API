@@ -7,11 +7,11 @@ from src.core.mongo import db # ទីតាំង Database របស់អ្�
 from src.core.security import hash_password # ត្រូវមាន Function នេះដើម្បីបង្កើត Password
 
 async def migrate_fresh():
-    print("🧹 កំពុងដំណើរការ លុបទិន្នន័យ (Reset)...")
+    print("🧹 Procesing Delete...")
     try:
         collection_names = await db.list_collection_names()
         if not collection_names:
-            print("✨ Database របស់អ្នកទទេស្អាតស្រាប់ហើយ!")
+            print("✨ Database is already empty!")
             return
 
         for coll_name in collection_names:
@@ -66,6 +66,18 @@ async def seed_database():
                 "is_profile_completed": True,
                 "verified_at": now,
                 "updated_at": now
+            },
+            {
+                "first_name": "Super",
+                "last_name": "Admin 3",
+                "email": "test@gmail.com",
+                "password_hash": default_password,
+                "auth_provider": "local",
+                "role": "admin",
+                "is_active": True,
+                "is_profile_completed": True,
+                "verified_at": now,
+                "updated_at": now
             }, 
         ]
 
@@ -88,10 +100,10 @@ async def seed_database():
 
         if operations:
             result = await users_collection.bulk_write(operations)
-            print(f"✅ ជោគជ័យ! បញ្ជូលថ្មី: {result.upserted_count}, កែប្រែ: {result.modified_count}")
+            print(f"✅ Success ! Added: {result.upserted_count}, Updated: {result.modified_count}")
         
     except Exception as e:
-        print(f"មានបញ្ហាក្នុងការបញ្ជូលទិន្នន័យ (Seed): {e}")
+        print(f"[ERROR] Unexpected error in (Seed): {e}")
 
 async def main():
     # 1. 🎯 ចាប់យកពាក្យបញ្ជាពី Terminal ដោយមិនយកឈ្មោះ File មកទេ
@@ -99,9 +111,9 @@ async def main():
 
     if not args:
         print("❌ សូមបញ្ជាក់ជម្រើសណាមួយ! ឧទាហរណ៍៖")
-        print("  - python manage_db.py reset  (លុបទិន្នន័យចោលទាំងអស់)")
-        print("  - python manage_db.py seed   (គ្រាន់តែបញ្ជូល Data តេស្ត ដោយមិនលុបទិន្នន័យចាស់)")
-        print("  - python manage_db.py fresh  (លុបចោលទាំងអស់ រួចបញ្ជូល Data តេស្តថ្មី)")
+        print("  - python manage_db.py reset  (Delete all collections and reset database)")
+        print("  - python manage_db.py seed   (Add default users)")
+        print("  - python manage_db.py fresh  (Delete all collections and add default users)")
         return
 
     # 2. 🎯 ដំណើរការទៅតាមពាក្យបញ្ជា

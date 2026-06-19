@@ -21,7 +21,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # 2. រៀបចំមុខងារទាក់ទងនឹង JWT Token
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30 # អាយុកាលនៃ Access Token
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 # អាយុកាលនៃ Access Token
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 def create_access_token(data: dict) -> str:
