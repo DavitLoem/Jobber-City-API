@@ -113,6 +113,7 @@ from src.domains.master_data.routes.job_level_router import router as admin_job_
 from src.domains.master_data.routes.education_level_router import router as admin_education_level_router
 from src.domains.master_data.routes.employment_type_router import router as admin_employment_type_router
 from src.domains.master_data.routes.work_type_router import router as admin_work_type_router
+from src.domains.master_data.routes.industry_router import router as admin_industry_router
 from src.domains.profile.company_profile.routes.company_profile_router import router as company_profile_router
 
 
@@ -127,6 +128,7 @@ app.include_router(admin_job_level_router)
 app.include_router(admin_education_level_router)
 app.include_router(admin_employment_type_router)
 app.include_router(admin_work_type_router)
+app.include_router(admin_industry_router)
 
 # =========================
 # Mobile App Routes

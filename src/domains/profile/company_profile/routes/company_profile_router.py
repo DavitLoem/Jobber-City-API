@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from src.core.response import APIResponse
 
 # 🎯 Import Schemas និង Service
@@ -11,6 +11,7 @@ from src.domains.profile.company_profile.services.company_profile_service import
 
 # 🎯 Import ទាំងពីរមក (Guard និង Data Fetcher)
 from src.dependencies.dependencies import require_employer, get_current_user
+from src.utils.cloudinary import upload_image
 
 # បង្កើត Service Object
 company_profile_service = CompanyProfileService()
@@ -61,3 +62,28 @@ async def update_company_profile(
     result = await company_profile_service.update_company_profile(user_id, payload)
     
     return APIResponse(success=True, message="Update company profile successfully", data=result)
+
+@router.post("/logo", response_model=APIResponse[CompanyProfileResponse])
+async def upload_company_logo(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_employer)
+):
+    """Upload រូបសញ្ញា (Logo) របស់ក្រុមហ៊ុន"""
+    
+    # ១. ត្រួតពិនិត្យប្រភេទឯកសារបឋម
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Please upload an image file (jpg, jpeg, png).")
+        
+    user_id = str(current_user["_id"])
+    
+    # ២. បញ្ជូនទៅ Cloudinary
+    upload_result = upload_image(file.file, folder="jobber_city/company_logos")
+    
+    if not upload_result.get("success"):
+        raise HTTPException(status_code=500, detail=f"Error Upload: {upload_result.get('message')}")
+        
+    # ៣. Update URL ចូល Database
+    logo_url = upload_result["url"]
+    result = await company_profile_service.update_logo(user_id, logo_url)
+    
+    return APIResponse(success=True, message="Upload Logo successfully", data=result)

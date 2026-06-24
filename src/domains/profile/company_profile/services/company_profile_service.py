@@ -1,5 +1,6 @@
 from bson import ObjectId
 from fastapi import HTTPException
+from datetime import datetime, timezone
 
 # 🎯 Import Database Collections 
 from src.core.mongo import users_collection, company_profiles_collection, categories_collection, provinces_collection, districts_collection
@@ -165,5 +166,22 @@ class CompanyProfileService:
             {"$set": final_update},
             return_document=True
         )
+
+        return self._format_response(updated_profile)
+    
+
+    async def upload_logo(self, user_id: str, logo_url: str) -> dict:
+        """Upload Link រូបភាព Logo របស់ក្រុមហ៊ុន"""
+        user_oid = ObjectId(user_id)
+        
+        # upload to DB
+        updated_profile = await company_profiles_collection.find_one_and_update(
+            {"user_id": user_oid},
+            {"$set": {"logo_url": logo_url}, "updated_at": datetime.now(timezone.utc)},
+            return_document=True
+        )
+        
+        if not updated_profile:
+            raise HTTPException(status_code=404, detail="Company profile not found.")
 
         return self._format_response(updated_profile)

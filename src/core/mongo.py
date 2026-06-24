@@ -43,4 +43,5 @@ employment_types_collection = collections("employment_types")
 job_levels_collection = collections("job_levels")
 education_levels_collection = collections("education_levels")
 skills_collection = collections("skills")
+industries_collection = collections("industries")
 
