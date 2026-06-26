@@ -174,10 +174,13 @@ class CompanyProfileService:
         """Upload Link រូបភាព Logo របស់ក្រុមហ៊ុន"""
         user_oid = ObjectId(user_id)
         
-        # upload to DB
+        # 🎯 ដោះស្រាយ Error: ដាក់ updated_at ចូលទៅក្នុង $set
         updated_profile = await company_profiles_collection.find_one_and_update(
             {"user_id": user_oid},
-            {"$set": {"logo_url": logo_url}, "updated_at": datetime.now(timezone.utc)},
+            {"$set": {
+                "logo_url": logo_url, 
+                "updated_at": datetime.now(timezone.utc) # 👈 រំកិលមកក្នុងនេះវិញ
+            }},
             return_document=True
         )
         
