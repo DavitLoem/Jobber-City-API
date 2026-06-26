@@ -45,3 +45,7 @@ education_levels_collection = collections("education_levels")
 skills_collection = collections("skills")
 industries_collection = collections("industries")
 
+# employer
+job_posts_collection = collections("job_posts")
+# job_post_applications_collection = collections("job_post_applications")
+

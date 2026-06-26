@@ -84,6 +84,6 @@ async def upload_company_logo(
         
     # ៣. Update URL ចូល Database
     logo_url = upload_result["url"]
-    result = await company_profile_service.update_logo(user_id, logo_url)
+    result = await company_profile_service.upload_logo(user_id, logo_url)
     
     return APIResponse(success=True, message="Upload Logo successfully", data=result)

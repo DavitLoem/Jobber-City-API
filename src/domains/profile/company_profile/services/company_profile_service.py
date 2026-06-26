@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from datetime import datetime, timezone
 
 # 🎯 Import Database Collections 
-from src.core.mongo import users_collection, company_profiles_collection, categories_collection, provinces_collection, districts_collection
+from src.core.mongo import users_collection, company_profiles_collection, industries_collection, provinces_collection, districts_collection
 
 # 🎯 Import Models & Schemas
 from src.domains.profile.company_profile.models.company_profile_model import CompanyProfileModel
@@ -42,7 +42,7 @@ class CompanyProfileService:
             if not ObjectId.is_valid(industry_id):
                 # dont write message khmer
                  raise HTTPException(status_code=400, detail="Industry ID is not valid.")
-            industry = await categories_collection.find_one({"_id": ObjectId(industry_id)})
+            industry = await industries_collection.find_one({"_id": ObjectId(industry_id)})
             if not industry:
                 raise HTTPException(status_code=404, detail="Industry not found.")
 

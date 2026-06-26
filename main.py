@@ -115,6 +115,7 @@ from src.domains.master_data.routes.employment_type_router import router as admi
 from src.domains.master_data.routes.work_type_router import router as admin_work_type_router
 from src.domains.master_data.routes.industry_router import router as admin_industry_router
 from src.domains.profile.company_profile.routes.company_profile_router import router as company_profile_router
+from src.domains.employer.job_post.routes.job_post_router import router as job_post_router
 
 
 # =========================
@@ -147,5 +148,6 @@ app.include_router(seeker_language_router)
 
 # Employer Routes (បន្ថែមនៅទីនេះពេលដែលបានបង្កើតរួចហើយ)
 app.include_router(company_profile_router)
+app.include_router(job_post_router)
 
 
