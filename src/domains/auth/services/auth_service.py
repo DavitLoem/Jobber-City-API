@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from bson import ObjectId
 from fastapi import HTTPException, status
-from src.core.mongo import collections
+from src.core.mongo import collections, seeker_profiles_collection
 from src.core.security import hash_password, verify_password, create_access_token, create_refresh_token, verify_token
 from src.domains.auth.auth_helper import validate_password_and_lockout
 from src.domains.auth.auth_schema import ChangePasswordRequest, ForgotPasswordRequest, OTPVerify, ResendOTPRequest, RefreshTokenRequest, ResetPasswordRequest, UserLogin, UserRegister
@@ -13,6 +13,50 @@ from src.domains.auth.services.otp_service import generate_and_send_otp, verify_
 users_collection = collections("users")
 otps_collection = collections("otps")
 refresh_tokens_collection = collections("refresh_tokens")
+
+async def get_onboarding_status(user_id: ObjectId, role: str) -> bool:
+    """Helper function ដើម្បីឆែកមើលស្ថានភាព Onboarding សម្រាប់តែ Seeker"""
+    
+    # 🎯 ករណីទី ១: បើគាត់ជា Seeker ត្រូវឆែកមើលថាគាត់រើស Location & Category ហើយឬនៅ?
+    if role == "seeker":
+        profile = await seeker_profiles_collection.find_one({"user_id": user_id})
+        return profile.get("onboarding_completed", False) if profile else False
+
+    elif role == "employer":
+        return True
+        
+    return False
+
+async def _generate_login_response(user: dict, is_normal_login: bool = False) -> dict:
+    
+    # 1. ផលិតសោរ
+    access_token = create_access_token({"sub": str(user["_id"]), "role": user["role"]})
+    refresh_token = create_refresh_token({"sub": str(user["_id"])})
+    
+    # 2. Save Refresh Token ចូល DB
+    token_model = create_refresh_token_model(user_id=user["_id"], token=refresh_token)
+    await refresh_tokens_collection.insert_one(token_model)
+    
+    # 3. 🎯 លុបលក្ខខណ្ឌចោល ហើយឆែកយកការពិតជានិច្ច
+    # ទោះបីជា Login ចាស់ ឬ Register ថ្មី ក៏ត្រូវឆែកមើល Status ជាក់ស្តែងនៅក្នុង Database ដែរ
+    onboarding_status = await get_onboarding_status(user["_id"], user.get("role"))
+    
+    # 4. បោះទិន្នន័យត្រឡប់ទៅវិញ
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": {
+            "id": str(user["_id"]),
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
+            "email": user["email"],
+            "role": user["role"],
+            "is_profile_completed": user.get("is_profile_completed", False),
+            "onboarding_completed": onboarding_status, # វានឹងពិតប្រាកដជានិច្ច
+            "avatar_url": user.get("avatar_url")
+        }
+    }
 
 async def register_mobile_user(user_data: UserRegister) -> dict:
     # 1. ស្វែងរកគណនីក្នុង Database
@@ -74,99 +118,39 @@ async def login_mobile_user(login_data: UserLogin) -> dict:
     # 1. ស្វែងរក User តាម Email
     user = await users_collection.find_one({"email": login_data.email})
     
-    # 2. ឆែកមើលថាមាន User នេះ ឬ Password ត្រូវគ្នាដែរឬទេ?
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Invalid email or password."
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
         
-    # 🎯 បន្ថែមការការពារទី ១: ឆែកមើលក្រែងគាត់ចុះឈ្មោះតាម Google
     if user.get("auth_provider") == "google":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This account is registered via Google. Please log in with Google."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This account is registered via Google. Please log in with Google.")
         
     await validate_password_and_lockout(user=user, password=login_data.password)
 
-    # 3. ឆែកមើលថាតើគាត់បាន Verify OTP ហើយឬនៅ?
     if not user.get("verified_at"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Please verify your account (OTP) before logging in."
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Please verify your account (OTP) before logging in.")
         
-    # 4. ឆែកមើលក្រែងលោគណនីនេះត្រូវ Admin បិទ (Banned/Disabled)
     if not user.get("is_active"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Your account is disabled."
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your account is disabled.")
 
-    # 5. [ស្រេចចិត្ត] កត់ត្រាម៉ោងដែលគាត់ Login ចុងក្រោយ (Update last_login_at)
     await users_collection.update_one(
         {"_id": user["_id"]}, 
         {"$set": {"last_login_at": datetime.now(timezone.utc)}}
     )
 
-    # 6. ផលិត Token ទាំងពីរ (Access & Refresh)
-    access_token = create_access_token({"sub": str(user["_id"]), "role": user["role"]})
-    refresh_token = create_refresh_token({"sub": str(user["_id"])})
-    
-    # Save Refresh Token ចូល DB
-    token_model = create_refresh_token_model(user_id=user["_id"], token=refresh_token)
-    await refresh_tokens_collection.insert_one(token_model)
-    
-    # 7. បោះទិន្នន័យត្រឡប់ទៅវិញ (ទម្រង់ដូចគ្នា នឹងមុខងារ Verify OTP បេះបិទ)
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "user": {
-            "id": str(user["_id"]),
-            "first_name": user["first_name"],
-            "last_name": user["last_name"],
-            "email": user["email"],
-            "role": user["role"],
-            "is_profile_completed": user.get("is_profile_completed", False),
-            "avatar_url": user.get("avatar_url")
-        }
-    }
+    return await _generate_login_response(user, is_normal_login=True)
 
 async def verify_otp_and_login(otp_data: OTPVerify) -> dict:
-    # 🎯 ហៅមុខងារផ្ទៀងផ្ទាត់ OTP
+    # 1. ផ្ទៀងផ្ទាត់ OTP
     valid_otp = await verify_otp_code(email=otp_data.email, otp_code=otp_data.otp_code)
 
-    # Update User ថា Verified រួច
+    # 2. Update User ថា Verified រួច
     user = await users_collection.find_one_and_update(
         {"_id": valid_otp["user_id"]},
         {"$set": {"verified_at": datetime.now(timezone.utc)}},
         return_document=True 
     )
 
-    # ផលិតសោរទាំងពីរ
-    access_token = create_access_token({"sub": str(user["_id"]), "role": user["role"]})
-    refresh_token = create_refresh_token({"sub": str(user["_id"])})
-    
-    # Save Refresh Token
-    token_model = create_refresh_token_model(user_id=user["_id"], token=refresh_token)
-    await refresh_tokens_collection.insert_one(token_model)
-    
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "user": {
-            "id": str(user["_id"]),
-            "first_name": user["first_name"],
-            "last_name": user["last_name"],
-            "email": user["email"],
-            "role": user["role"],
-            "is_profile_completed": user.get("is_profile_completed", False),
-            "avatar_url": user.get("avatar_url") 
-        }
-    }
+    return await _generate_login_response(user, is_normal_login=False)
 
 async def resend_otp_code(request_data: ResendOTPRequest) -> bool:
     # 1. ឆែកមើលគណនី

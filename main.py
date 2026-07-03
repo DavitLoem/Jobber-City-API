@@ -111,11 +111,13 @@ from src.domains.profile.seeker_profile.routes.training_router import router as 
 from src.domains.profile.seeker_profile.routes.language_router import router as seeker_language_router
 from src.domains.master_data.routes.job_level_router import router as admin_job_level_router
 from src.domains.master_data.routes.education_level_router import router as admin_education_level_router
+from src.domains.master_data.routes.skill_router import router as admin_skill_router
 from src.domains.master_data.routes.employment_type_router import router as admin_employment_type_router
 from src.domains.master_data.routes.work_type_router import router as admin_work_type_router
 from src.domains.master_data.routes.industry_router import router as admin_industry_router
 from src.domains.profile.company_profile.routes.company_profile_router import router as company_profile_router
 from src.domains.employer.job_post.routes.job_post_router import router as job_post_router
+from src.domains.public.job_feed.routes.job_feed_router import router as job_feed_router
 
 
 # =========================
@@ -127,6 +129,7 @@ app.include_router(admin_category_router)
 app.include_router(admin_location_router)
 app.include_router(admin_job_level_router)
 app.include_router(admin_education_level_router)
+app.include_router(admin_skill_router)
 app.include_router(admin_employment_type_router)
 app.include_router(admin_work_type_router)
 app.include_router(admin_industry_router)
@@ -149,5 +152,8 @@ app.include_router(seeker_language_router)
 # Employer Routes (បន្ថែមនៅទីនេះពេលដែលបានបង្កើតរួចហើយ)
 app.include_router(company_profile_router)
 app.include_router(job_post_router)
+
+# Public Routes
+app.include_router(job_feed_router)
 
 

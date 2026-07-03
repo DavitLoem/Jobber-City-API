@@ -46,3 +46,20 @@ async def update_core_profile_route(
         message="Update core profile successfully",
         data=result
     )
+    
+@router.put("/onboarding", response_model=APIResponse[SeekerProfileResponse])
+async def complete_onboarding_route(
+    payload: SeekerCoreProfileUpdateRequest, 
+    current_user: dict = Depends(require_seeker)
+):
+    """បញ្ចប់ការចុះឈ្មោះជំហានដំបូង (Onboarding)"""
+    user_id = current_user.get("id") or current_user.get("_id")
+    
+    # ហៅ Service ដដែល (វាមាន logic រួចហើយ)
+    result = await profile_service.update_core_profile(str(user_id), payload)
+    
+    return APIResponse(
+        success=True,
+        message="Onboarding completed successfully",
+        data=result
+    )

@@ -97,6 +97,7 @@ async def update_core_profile(user_id: str, data: SeekerCoreProfileUpdateRequest
     
     user_oid = ObjectId(user_id)
     update_data = data.model_dump(exclude_unset=True)
+    update_data["onboarding_completed"] = True
 
     if not update_data:
         return await get_seeker_profile(user_id)
@@ -135,6 +136,10 @@ async def update_core_profile(user_id: str, data: SeekerCoreProfileUpdateRequest
     existing_profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
 
     if existing_profile:
+        # ដកឈ្មោះចេញពី update_data ក្នុងករណីដែលគេមិនចង់កែឈ្មោះ 
+        # ប៉ុន្តែបើសិនគេចង់កែ វានឹងនៅតែ Update តាមធម្មតា
+        update_data.pop("first_name", None) 
+        update_data.pop("last_name", None)
         # គណនាភាគរយថ្មី ដោយផ្អែកលើទិន្នន័យចាស់ បូកបញ្ជូលទិន្នន័យថ្មី
         merged_profile = {**existing_profile, **update_data}
         update_data["profile_completion_percentage"] = calculate_completion_percentage(merged_profile)

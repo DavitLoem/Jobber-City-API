@@ -37,6 +37,8 @@ class SeekerCoreProfileUpdateRequest(BaseModel):
     skills: Optional[List[str]] = Field(None, example=["Python", "FastAPI", "Flutter"])
     portfolio_url: Optional[str] = Field(None, example="https://myportfolio.com")
     linkedin_url: Optional[str] = Field(None, example="https://linkedin.com/in/soksan")
+    
+    onboarding_completed: Optional[bool] = Field(None, description="កំណត់ថាតើគាត់ឆ្លងកាត់ការរើសទិន្នន័យលើកដំបូងរួចរាល់ឬនៅ")
 
 class SeekerProfileResponse(BaseModel):
     """Schema សម្រាប់បោះទិន្នន័យ Profile ទាំងមូលទៅកាន់ Mobile App វិញ"""

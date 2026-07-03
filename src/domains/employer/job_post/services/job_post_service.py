@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from src.core.mongo import job_posts_collection, company_profiles_collection
 
 from src.domains.employer.job_post.models.job_post_model import JobPostModel
-from src.domains.employer.job_post.schemas.job_post_schema import JobPostCreate
+from src.domains.employer.job_post.schemas.job_post_schema import JobPostCreate, JobPostUpdate
 
 class JobPostService:
     
@@ -44,7 +44,41 @@ class JobPostService:
             "created_at": job.get("created_at"),
             "updated_at": job.get("updated_at")
         }
+        
+    def _validate_foreign_keys(self, payload) -> None:
+        """ឆែកមើលថាតើ ID ទាំងអស់ពិតជាទម្រង់ ObjectId របស់ MongoDB ត្រឹមត្រូវឬអត់"""
+        
+        # ប្រមូលផ្តុំ IDs ទាំងអស់ (យើងប្រើ getattr ដើម្បីឱ្យវាគាំទ្រទាំង Create និង Update)
+        ids_to_check = {
+            "category_id": getattr(payload, "category_id", None),
+            "job_level_id": getattr(payload, "job_level_id", None),
+            "work_type_id": getattr(payload, "work_type_id", None),
+            "employment_type_id": getattr(payload, "employment_type_id", None),
+            "education_level_id": getattr(payload, "education_level_id", None),
+            "province_id": getattr(payload, "province_id", None),
+            "district_id": getattr(payload, "district_id", None)
+        }
 
+        # ១. ឆែកមើល ID តែម្តងៗ (Single IDs)
+        for field_name, id_val in ids_to_check.items():
+            # បើមានបញ្ចូលតម្លៃ ហើយតម្លៃនោះមិនមែនជា ObjectId
+            if id_val and not ObjectId.is_valid(id_val):
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Invalid data: '{field_name}' is not a valid ID format."
+                )
+
+        # ២. ឆែកមើល Array នៃ IDs (Skills)
+        required_skills = getattr(payload, "required_skills", [])
+        if required_skills:
+            for skill_id in required_skills:
+                if not ObjectId.is_valid(skill_id):
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Invalid data: skill '{skill_id}' is not a valid ID format."
+                    )
+
+    
     async def create_job_post(self, user_id: str, payload: JobPostCreate) -> dict:
         """មុខងារសម្រាប់បង្កើតការងារថ្មី"""
         user_oid = ObjectId(user_id)
@@ -60,7 +94,9 @@ class JobPostService:
 
         # ២. ទាញយក company_id ពីប្រវត្តិរូបក្រុមហ៊ុនរបស់គាត់
         company_id = company["_id"]
-
+        
+        self._validate_foreign_keys(payload)
+            
         # ៣. បញ្ចូលទិន្នន័យទៅក្នុង Model ដើម្បីបំប្លែង String ID ទៅជា ObjectId 
         # និងបង្កើត Timestamp (created_at, updated_at)
         new_job_model = JobPostModel(
@@ -76,3 +112,110 @@ class JobPostService:
 
         # ៦. បោះទិន្នន័យដែលទើបតែ Save រួចត្រឡប់ទៅឱ្យ Router វិញ
         return self._format_response(new_job_dict)
+    
+    async def get_my_job_posts(self, user_id: str) -> list:
+        """ទាញយកបញ្ជីការងារទាំងអស់ដែលក្រុមហ៊ុននេះបាន Post (សម្រាប់ Employer Dashboard)"""
+        user_oid = ObjectId(user_id)
+
+        # ១. រកមើល Company របស់ Employer
+        company = await company_profiles_collection.find_one({"user_id": user_oid})
+        if not company:
+            # បើគាត់អត់ទាន់មាន Company Profile ទេ មានន័យថាគាត់មិនទាន់អាចមាន Job Post នៅឡើយ
+            return []
+
+        company_id = company["_id"]
+
+        # ២. ទាញយកការងារទាំងអស់របស់ក្រុមហ៊ុននេះ 
+        # .sort("created_at", -1) មានន័យថារៀបតាមថ្ងៃ Post ថ្មីបំផុត (Descending) ឱ្យនៅខាងលើគេ
+        cursor = job_posts_collection.find({"company_id": company_id}).sort("created_at", -1)
+        
+        # ៣. បំប្លែងទិន្នន័យ (Format) ហើយដាក់ចូលក្នុង Array
+        jobs = []
+        async for job in cursor:
+            jobs.append(self._format_response(job))
+
+        return jobs
+    
+    async def update_job_post(self, user_id: str, job_id: str, payload: JobPostUpdate) -> dict:
+        """មុខងារសម្រាប់កែប្រែការងារចាស់"""
+        
+        if not ObjectId.is_valid(job_id):
+            raise HTTPException(status_code=400, detail="ID is not valid.")
+
+        # ១. រកមើល Company របស់ Employer សិន
+        company = await company_profiles_collection.find_one({"user_id": ObjectId(user_id)})
+        if not company:
+            raise HTTPException(status_code=403, detail="You must have a company profile to update a job post.")
+
+        # ២. 🛡️ សុវត្ថិភាពទិន្នន័យ៖ ស្វែងរកការងារនោះ ព្រមទាំងឆែកថាវាជារបស់ក្រុមហ៊ុននេះពិតមែនអត់?
+        existing_job = await job_posts_collection.find_one({
+            "_id": ObjectId(job_id),
+            "company_id": company["_id"]
+        })
+
+        if not existing_job:
+            raise HTTPException(
+                status_code=404, 
+                detail="Job post not found or you don't have permission to update it."
+            )
+
+        # ៣. ឆែក Validation លើ Foreign Keys ដោយប្រើ Helper Function ដែលយើងទើបបង្កើត
+        self._validate_foreign_keys(payload)
+
+        # ៤. រៀបចំទិន្នន័យសម្រាប់ Update (ទាញយកតែ Field ដែល Employer បានបញ្ជូនមក)
+        update_data = payload.model_dump(exclude_unset=True)
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No data provided for update.")
+
+        # ៥. បំប្លែង String ID ទៅជា ObjectId សម្រាប់ Field ណាដែលមានការកែប្រែ
+        id_fields = [
+            "category_id", "job_level_id", "work_type_id", 
+            "employment_type_id", "education_level_id", 
+            "province_id", "district_id"
+        ]
+        
+        for field in id_fields:
+            if field in update_data and update_data[field]:
+                update_data[field] = ObjectId(update_data[field])
+
+        if "required_skills" in update_data:
+            update_data["required_skills"] = [ObjectId(skill) for skill in update_data["required_skills"]]
+
+        if "closing_date" in update_data:
+            update_data["closing_date"] = update_data["closing_date"].replace(tzinfo=timezone.utc)
+
+        update_data["updated_at"] = datetime.now(timezone.utc)
+
+        # ៦. Update ចូល Database
+        updated_job = await job_posts_collection.find_one_and_update(
+            {"_id": ObjectId(job_id)},
+            {"$set": update_data},
+            return_document=True
+        )
+
+        return self._format_response(updated_job)
+    
+    async def delete_job_post(self, user_id: str, job_id: str) -> dict:
+        """មុខងារសម្រាប់លុបការងារជាអចិន្ត្រៃយ៍ (Hard Delete)"""
+        
+        if not ObjectId.is_valid(job_id):
+            raise HTTPException(status_code=400, detail="ID is not valid.")
+
+        # ១. រកមើល Company របស់ Employer
+        company = await company_profiles_collection.find_one({"user_id": ObjectId(user_id)})
+        if not company:
+            raise HTTPException(status_code=403, detail="You must have a company profile to delete a job post.")
+
+        # ២. 🛡️ សុវត្ថិភាពទិន្នន័យ៖ លុបតែការងារណាដែលជារបស់ក្រុមហ៊ុននេះប៉ុណ្ណោះ
+        result = await job_posts_collection.delete_one({
+            "_id": ObjectId(job_id),
+            "company_id": company["_id"] # ការពារមិនឱ្យលុបការងារអ្នកដទៃ
+        })
+
+        if result.deleted_count == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail="Job post not found or you don't have permission to delete it."
+            )
+
+        return {"success": True}

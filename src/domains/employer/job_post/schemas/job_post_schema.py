@@ -2,6 +2,10 @@ from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
+class SpecificSchedule(BaseModel):
+    day: str = Field(..., description="ថ្ងៃ (ឧ. Saturday)")
+    hours: str = Field(..., description="ម៉ោង (ឧ. 8:00 AM - 12:00 PM)")
+
 # ==========================================
 # ផ្នែក REQUEST (សម្រាប់ Create)
 # ==========================================
@@ -23,8 +27,8 @@ class JobPostCreate(BaseModel):
     experience: str = Field(..., description="បទពិសោធន៍ (ឧ. 1 - 3 Years)")
     working_days: str = Field(..., description="ថ្ងៃធ្វើការ (ឧ. Mon - Sat)")
     working_hours: str = Field(..., description="ម៉ោងធ្វើការ (ឧ. 8:00 AM - 5:00 PM)")
-    specific_schedule: Optional[List[dict]] = Field(
-        None, description="កាលវិភាគពិសេស (List of {day, hours})"
+    specific_schedule: Optional[List[SpecificSchedule]] = Field(
+        None, description="កាលវិភាគពិសេស"
     )
     
     # Foreign Keys (Master Data)
@@ -105,3 +109,4 @@ class JobPostResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    
