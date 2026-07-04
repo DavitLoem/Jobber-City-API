@@ -47,6 +47,7 @@ class SeekerProfileResponse(BaseModel):
     
     profile_image_url: Optional[str] = None
     profile_completion_percentage: int
+    onboarding_completed: bool = False
     
     first_name: str
     last_name: str

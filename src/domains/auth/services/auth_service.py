@@ -53,7 +53,7 @@ async def _generate_login_response(user: dict, is_normal_login: bool = False) ->
             "email": user["email"],
             "role": user["role"],
             "is_profile_completed": user.get("is_profile_completed", False),
-            "onboarding_completed": onboarding_status, # វានឹងពិតប្រាកដជានិច្ច
+            "onboarding_completed": onboarding_status,
             "avatar_url": user.get("avatar_url")
         }
     }

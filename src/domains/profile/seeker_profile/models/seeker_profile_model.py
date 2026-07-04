@@ -18,6 +18,7 @@ class SeekerProfileModel:
         # 🎯 រូបភាព និងភាគរយ
         self.image_url = kwargs.get("image_url")
         self.profile_completion_percentage = kwargs.get("profile_completion_percentage", 0)
+        self.onboarding_completed = kwargs.get("onboarding_completed", False)
 
         # 🎯 ព័ត៌មានផ្ទាល់ខ្លួន
         self.date_of_birth = kwargs.get("date_of_birth")

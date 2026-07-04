@@ -23,6 +23,7 @@ def create_user_model(
         "auth_provider": auth_provider,
         "is_active": True,
         "is_profile_completed": False,
+        "onboarding_completed": False,
         "verified_at": verified_at,
         "failed_login_attempts": 0, 
         "locked_until": None,

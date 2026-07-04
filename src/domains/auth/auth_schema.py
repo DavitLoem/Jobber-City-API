@@ -101,6 +101,7 @@ class UserResponse(BaseModel):
     role: str
     avatar_url: Optional[str] = None
     is_profile_completed: bool
+    onboarding_completed: bool = False
 
 # Schema សម្រាប់ JWT Tokens (បែងចែក Access និង Refresh)
 class TokenResponse(BaseModel):
