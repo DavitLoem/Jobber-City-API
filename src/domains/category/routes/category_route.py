@@ -5,13 +5,12 @@ from src.core.response import APIResponse
 from src.domains.category.schema.category_schema import CategoryResponse
 import src.domains.category.services.category_service as mobile_service
 
-# 🎯 Import RoleChecker ពីឯកសារ dependencies របស់អ្នក
 from src.dependencies.dependencies import require_mobile_users
 
 router = APIRouter(
     prefix="/api/categories",
     tags=["Mobile - Categories"],
-    dependencies=[Depends(require_mobile_users)] # 🔒 ចាក់សោរ Router ទាំងមូល
+    dependencies=[Depends(require_mobile_users)]
 )
 
 @router.get("/", response_model=APIResponse[List[CategoryResponse]])

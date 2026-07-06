@@ -115,9 +115,11 @@ from src.domains.master_data.routes.skill_router import router as admin_skill_ro
 from src.domains.master_data.routes.employment_type_router import router as admin_employment_type_router
 from src.domains.master_data.routes.work_type_router import router as admin_work_type_router
 from src.domains.master_data.routes.industry_router import router as admin_industry_router
+from src.domains.master_data.routes.public_master_data_router import router as public_master_data_router
 from src.domains.profile.company_profile.routes.company_profile_router import router as company_profile_router
 from src.domains.employer.job_post.routes.job_post_router import router as job_post_router
 from src.domains.public.job_feed.routes.job_feed_router import router as job_feed_router
+
 
 
 # =========================
@@ -140,6 +142,7 @@ app.include_router(admin_industry_router)
 app.include_router(auth_router)
 app.include_router(category_router)
 app.include_router(location_router)
+app.include_router(public_master_data_router)
 
 # Seeker Routes
 app.include_router(seeker_profile_router)
