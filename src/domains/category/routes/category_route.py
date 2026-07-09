@@ -22,6 +22,6 @@ async def get_mobile_categories_route(
     result = await mobile_service.get_active_categories(search=search)
     return APIResponse(
         success=True,
-        message="ទាញយកបញ្ជីប្រភេទការងារជោគជ័យ",
+        message="Get categories successfully",
         data=result
     )

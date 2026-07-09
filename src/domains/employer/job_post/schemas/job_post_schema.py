@@ -77,6 +77,8 @@ class JobPostUpdate(BaseModel):
     closing_date: Optional[datetime] = Field(None)
     status: Optional[str] = Field(None, description="ឧ. active, closed, draft")
 
+class JobStatusUpdate(BaseModel):
+    status: str = Field(..., description="ឧទាហរណ៍: active, inactive, closed, draft")
 
 # ==========================================
 # ផ្នែក RESPONSE (បោះត្រឡប់ទៅ UI)

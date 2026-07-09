@@ -1,5 +1,5 @@
 from bson import ObjectId
-from src.core.mongo import job_posts_collection, districts_collection, provinces_collection, company_profiles_collection, employment_types_collection, work_types_collection
+from src.core.mongo import job_posts_collection, districts_collection, provinces_collection, company_profiles_collection, employment_types_collection, work_types_collection, seeker_profiles_collection
 
 class JobFeedService:
     
@@ -15,7 +15,9 @@ class JobFeedService:
         elif province_name:
             location = province_name
         else:
-            location = "ទីតាំងមិនបានបញ្ជាក់"
+            location = "Unknown Location"
+            
+        match_score = job_doc.get("match_percentage", 0)
             
         return {
             "id": str(job_doc["_id"]),
@@ -29,22 +31,64 @@ class JobFeedService:
             "employment_type": job_doc.get("employment_type", {}).get("name", "N/A"),
             "work_type": job_doc.get("work_type", {}).get("name", "N/A"),
             "created_at": job_doc.get("created_at"),
-            "is_saved": False, # លំនាំដើមសិន ព្រោះ Public មិនទាន់ Login
-            "match_percentage": None
+            "is_saved": False, 
+            "match_percentage": int(match_score)
         }
 
-    async def get_recent_jobs(self, page: int = 1, limit: int = 10) -> list:
+    async def get_jobs(self, user_id: str, feed_type: str = "recent", page: int = 1, limit: int = 10) -> list:
         """ទាញយកការងារចុងក្រោយបំផុត (Recent Jobs) ជាមួយមុខងារ Pagination"""
-        
-        # គណនាចំនួនដែលត្រូវរំលង (Skip) សម្រាប់ទំព័រនីមួយៗ
+    
         skip = (page - 1) * limit
+        user_oid = ObjectId(user_id)
+        
+        seeker_profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
+        seeker_skills = seeker_profile.get("skills", []) if seeker_profile else []
+        seeker_categories = seeker_profile.get("expertise_category_ids", []) if seeker_profile else []
+        
+        if feed_type == "recommended":
+            sort_stage = {"$sort": {"match_percentage": -1, "created_at": -1}}
+        else: # លំនាំដើមគឺ "recent"
+            sort_stage = {"$sort": {"created_at": -1}}
         
         pipeline = [
             # ១. ជ្រើសរើសយកតែការងារណាដែលកំពុង Active
             {"$match": {"status": "active"}},
             
+            # 💡 --- THE MATCHING ENGINE --- 💡
+            # ក. រកចំនួន Skills ដែលជាន់គ្នា និងឆែកមើល Category
+            {"$addFields": {
+                "matched_skills_count": {
+                    "$size": { "$setIntersection": [ {"$ifNull": ["$required_skills", []]}, seeker_skills ] }
+                },
+                "total_skills_count": {
+                    "$size": { "$ifNull": ["$required_skills", []] }
+                },
+                "is_category_match": {
+                    "$in": ["$category_id", seeker_categories]
+                }
+            }},
+            
+            # ខ. គណនាពិន្ទុ (Category 30 + Skill 70)
+            {"$addFields": {
+                "skill_score": {
+                    "$cond": [
+                        {"$gt": ["$total_skills_count", 0]}, # បើក្រុមហ៊ុនមានដាក់ទាមទារ Skill
+                        {"$multiply": [{"$divide": ["$matched_skills_count", "$total_skills_count"]}, 70]}, # (ជាន់គ្នា/សរុប) * 70
+                        0 # បើក្រុមហ៊ុនអត់ទាមទារ Skill អីសោះ បាន 0 ពិន្ទុ (ឬអាចកែតាមចង់បាន)
+                    ]
+                },
+                "category_score": {
+                    "$cond": ["$is_category_match", 30, 0] # បើត្រូវ Category បាន 30 បើមិនត្រូវ បាន 0
+                }
+            }},
+            
+            # គ. បូកពិន្ទុបញ្ចូលគ្នា និងធ្វើឱ្យទៅជាចំនួនគត់ (Round)
+            {"$addFields": {
+                "match_percentage": {"$round": [{"$add": ["$skill_score", "$category_score"]}, 0]}
+            }},
+            
             # ២. រៀបតាមការប្រកាសថ្មីបំផុត
-            {"$sort": {"created_at": -1}},
+            sort_stage,
             
             # ៣. កំណត់ទំព័រ (Pagination)
             {"$skip": skip},

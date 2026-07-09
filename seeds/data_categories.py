@@ -1,5 +1,5 @@
 from pymongo import UpdateOne
-
+from datetime import datetime, timezone
 from src.core.mongo import categories_collection
 
 categories_data = [
@@ -36,17 +36,29 @@ async def seed_categories():
     if not categories_data:
         return
 
+    # កំណត់ម៉ោងបច្ចុប្បន្ន
+    now = datetime.now(timezone.utc)
+    
     # បង្កើតប្រតិបត្តិការ (Operations) សម្រាប់រាល់ទិន្នន័យនីមួយៗ
     operations = []
     for item in categories_data:
         op = UpdateOne(
             {"name": item["name"]},
-            {"$set": item},          
+            {
+                "$set": {
+                    **item,
+                    "updated_at": now # Update ម៉ោងជានិច្ចនៅពេលរត់ Seed ម្តងៗ
+                },
+                "$setOnInsert": {
+                    "created_at": now # បង្កើតម៉ោង created_at តែពេល Insert លើកដំបូងប៉ុណ្ណោះ
+                }
+            },          
             upsert=True              
         )
         operations.append(op)
     
-    # បញ្ជាឱ្យ MongoDB ធ្វើការងារទាំងអស់នេះក្នុងពេលតែមួយ (លឿន និងមានសុវត្ថិភាព)
+    # បញ្ជាឱ្យ MongoDB ធ្វើការងារទាំងអស់នេះក្នុងពេលតែមួយ
     result = await categories_collection.bulk_write(operations)
     
-    print(f"✅ Industries -> Add New: {result.upserted_count} | Update: {result.modified_count}")
+    # បានកែឈ្មោះពី Industries មក Categories ឱ្យត្រូវនឹងទិន្នន័យជាក់ស្តែង
+    print(f"✅ Categories -> Add New: {result.upserted_count} | Update: {result.modified_count}")

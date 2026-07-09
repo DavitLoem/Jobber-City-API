@@ -113,23 +113,43 @@ class JobPostService:
         # ៦. បោះទិន្នន័យដែលទើបតែ Save រួចត្រឡប់ទៅឱ្យ Router វិញ
         return self._format_response(new_job_dict)
     
-    async def get_my_job_posts(self, user_id: str) -> list:
-        """ទាញយកបញ្ជីការងារទាំងអស់ដែលក្រុមហ៊ុននេះបាន Post (សម្រាប់ Employer Dashboard)"""
+    async def get_my_job_posts(
+        self, 
+        user_id: str, 
+        search: str = None, 
+        status: str = None, 
+        page: int = 1, 
+        limit: int = 10
+    ) -> list:
+        """ទាញយកបញ្ជីការងារទាំងអស់ដែលក្រុមហ៊ុននេះបាន Post ព្រមទាំងអាច Search និង Filter បាន"""
         user_oid = ObjectId(user_id)
 
         # ១. រកមើល Company របស់ Employer
         company = await company_profiles_collection.find_one({"user_id": user_oid})
         if not company:
-            # បើគាត់អត់ទាន់មាន Company Profile ទេ មានន័យថាគាត់មិនទាន់អាចមាន Job Post នៅឡើយ
             return []
 
         company_id = company["_id"]
 
-        # ២. ទាញយកការងារទាំងអស់របស់ក្រុមហ៊ុននេះ 
-        # .sort("created_at", -1) មានន័យថារៀបតាមថ្ងៃ Post ថ្មីបំផុត (Descending) ឱ្យនៅខាងលើគេ
-        cursor = job_posts_collection.find({"company_id": company_id}).sort("created_at", -1)
+        # ២. រៀបចំ Query សម្រាប់ Search និង Filter
+        query = {"company_id": company_id}
         
-        # ៣. បំប្លែងទិន្នន័យ (Format) ហើយដាក់ចូលក្នុង Array
+        # ក. ស្វែងរកតាមចំណងជើងការងារ (Title) - មិនប្រកាន់អក្សរតូចធំ (Case-insensitive)
+        if search:
+            query["title"] = {"$regex": search, "$options": "i"}
+            
+        # ខ. ត្រងតាមស្ថានភាព (Status) ឧ. active, inactive, closed, draft
+        if status and status.lower() != "all":
+            query["status"] = status.lower()
+
+        # ៣. គណនាការកាត់ទំព័រ (Pagination)
+        skip = (page - 1) * limit
+
+        # ៤. ទាញយកការងារទាំងអស់តាម Query ខាងលើ 
+        # .sort("created_at", -1) រៀបតាមថ្ងៃ Post ថ្មីបំផុតឱ្យនៅខាងលើគេ
+        cursor = job_posts_collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        
+        # ៥. បំប្លែងទិន្នន័យ (Format) ហើយដាក់ចូលក្នុង Array
         jobs = []
         async for job in cursor:
             jobs.append(self._format_response(job))
@@ -219,3 +239,42 @@ class JobPostService:
             )
 
         return {"success": True}
+    
+    async def change_job_status(self, user_id: str, job_id: str, new_status: str) -> dict:
+        """មុខងារសម្រាប់ឱ្យ Employer ប្តូរស្ថានភាពការងារ (ឧ. active, closed, draft) យ៉ាងរហ័ស"""
+        
+        if not ObjectId.is_valid(job_id):
+            raise HTTPException(status_code=400, detail="ID is not valid.")
+            
+        # ១. អនុញ្ញាតតែ Status ទាំងនេះប៉ុណ្ណោះ
+        allowed_statuses = ["active", "inactive", "closed", "draft"]
+        if new_status not in allowed_statuses:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid status. Allowed values are: {', '.join(allowed_statuses)}"
+            )
+
+        # ២. ឆែករក Company របស់ Employer
+        company = await company_profiles_collection.find_one({"user_id": ObjectId(user_id)})
+        if not company:
+            raise HTTPException(status_code=403, detail="You must have a company profile.")
+
+        # ៣. Update Status ក្នុង Database ដោយប្រាកដថាការងារនោះជារបស់ក្រុមហ៊ុនគាត់មែន
+        updated_job = await job_posts_collection.find_one_and_update(
+            {
+                "_id": ObjectId(job_id),
+                "company_id": company["_id"]
+            },
+            {
+                "$set": {
+                    "status": new_status,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            },
+            return_document=True
+        )
+
+        if not updated_job:
+            raise HTTPException(status_code=404, detail="Job post not found or permission denied.")
+
+        return self._format_response(updated_job)

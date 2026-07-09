@@ -118,8 +118,9 @@ from src.domains.master_data.routes.industry_router import router as admin_indus
 from src.domains.master_data.routes.public_master_data_router import router as public_master_data_router
 from src.domains.profile.company_profile.routes.company_profile_router import router as company_profile_router
 from src.domains.employer.job_post.routes.job_post_router import router as job_post_router
-from src.domains.public.job_feed.routes.job_feed_router import router as job_feed_router
-
+from src.domains.employer.applicant.routes.applicant_router import router as applicant_router
+from src.domains.seeker.job_feed.routes.job_feed_router import router as job_feed_router
+from src.domains.seeker.application.routes.seeker_application_router import router as seeker_application_router
 
 
 # =========================
@@ -151,12 +152,12 @@ app.include_router(seeker_experience_router)
 app.include_router(seeker_education_router)
 app.include_router(seeker_training_router)
 app.include_router(seeker_language_router)
+app.include_router(job_feed_router)
+app.include_router(seeker_application_router)
 
 # Employer Routes (បន្ថែមនៅទីនេះពេលដែលបានបង្កើតរួចហើយ)
 app.include_router(company_profile_router)
 app.include_router(job_post_router)
-
-# Public Routes
-app.include_router(job_feed_router)
+app.include_router(applicant_router)
 
 

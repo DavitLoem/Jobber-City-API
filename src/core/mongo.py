@@ -47,5 +47,5 @@ industries_collection = collections("industries")
 
 # employer
 job_posts_collection = collections("job_posts")
-# job_post_applications_collection = collections("job_post_applications")
+job_applications_collection = collections("job_applications")
 
