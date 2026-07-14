@@ -49,7 +49,7 @@ def upload_image(file, folder: str = "jobber_city") -> dict:
             file,
             folder=folder,
             resource_type="auto",
-            allowed_formats=["jpg", "jpeg", "png", "webp"] # ដក gif ចេញប្រសិនបើមិនចង់ឱ្យ Seeker ដាក់រូប Profile ចលនា
+            allowed_formats=["jpg", "jpeg", "png", "webp"]
         )
         return {
             "success": True,

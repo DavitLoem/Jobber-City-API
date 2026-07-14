@@ -175,7 +175,7 @@ class CompanyProfileService:
             {"user_id": user_oid},
             {"$set": {
                 "logo_url": logo_url, 
-                "updated_at": datetime.now(timezone.utc) # 👈 រំកិលមកក្នុងនេះវិញ
+                "updated_at": datetime.now(timezone.utc)
             }},
             return_document=True
         )

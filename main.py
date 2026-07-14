@@ -24,7 +24,7 @@ app = FastAPI(
 # កំណត់ថាអ្នកណាខ្លះ (Domain ណាខ្លះ) អាចហៅ API នេះបាន
 origins = [
     "http://localhost:3000",      # សម្រាប់ React/Next.js
-    "http://localhost:8080",      # សម្រាប់ Vue
+    "http://localhost:5173",      # សម្រាប់ Vue
     "http://localhost:5000",      # សម្រាប់ Flutter Web
     # "https://www.jobbercity.com" # ដាក់ Domain ពិតប្រាកដរបស់អ្នកនៅពេល Deploy
     "*"                           # ឬដាក់ "*" ដើម្បីអនុញ្ញាតឱ្យហៅពីគ្រប់កន្លែង (ល្អសម្រាប់ការធ្វើតេស្ត)
