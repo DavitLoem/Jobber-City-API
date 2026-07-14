@@ -83,35 +83,31 @@ class CompanyProfileService:
         """បង្កើតព័ត៌មានក្រុមហ៊ុនថ្មី (1 User = 1 Company)"""
         user_oid = ObjectId(user_id)
 
-        # ឆែកមើលក្រែង Employer ម្នាក់នេះមាន Company រួចហើយ
         existing_profile = await company_profiles_collection.find_one({"user_id": user_oid})
         if existing_profile:
             raise HTTPException(status_code=400, detail="Your account already has a company profile.")
 
-        # ឆែកសុពលភាព Master Data (Industry និង Location)
         await self._verify_master_data_exists(payload.industry_id, payload.province_id, payload.district_id)
 
-        # ឆែកក្រែងឈ្មោះក្រុមហ៊ុននេះមានគេប្រើហើយ (ការពារកុំឱ្យជាន់ឈ្មោះគ្នា)
         existing_name = await company_profiles_collection.find_one({"company_name": {"$regex": f"^{payload.company_name}$", "$options": "i"}})
         if existing_name:
             raise HTTPException(status_code=400, detail=f"Company name '{payload.company_name}' is already taken.")
 
-        # បំប្លែង Payload ទៅជា Model ដើម្បី Save ចូល DB
         new_model = CompanyProfileModel(
             user_id=user_oid,
-            **payload.model_dump() # ស្រាយអថេរទាំងអស់ចេញពី Pydantic Schema
+            **payload.model_dump() 
         )
         
         new_dict = new_model.to_create_dict()
-        
-        # Save ចូល Database
         await company_profiles_collection.insert_one(new_dict)
         
-        # ប្តូរ role របស់ User ឱ្យទៅជា "employer_verified" ឬ "active_employer" 
-        # នៅទីនេះយើងសន្មត់ថាគាត់ទើបតែមាន Profile ពេញលេញ
+        # 🎯 កូដដែលបាន Update ថ្មី 
+        # Update ស្ថានភាព User ឱ្យស៊ីគ្នាជាមួយ Token និង Middleware របស់ Flutter
         await users_collection.update_one(
             {"_id": user_oid},
-            {"$set": {"has_company_profile": True}} 
+            {"$set": {
+                "is_profile_completed": True,
+            }} 
         )
 
         return self._format_response(new_dict)
