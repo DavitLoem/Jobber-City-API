@@ -36,6 +36,7 @@ class JobPostService:
             
             # បំប្លែង Array នៃ ObjectId ទៅជា Array នៃ String វិញ
             "required_skills": [str(skill) for skill in job.get("required_skills", [])],
+            "custom_skills": job.get("custom_skills", []),
             
             "province_id": str(job.get("province_id", "")),
             "district_id": str(job.get("district_id", "")) if job.get("district_id") else None,

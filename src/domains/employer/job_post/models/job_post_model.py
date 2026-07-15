@@ -9,7 +9,7 @@ class JobPostModel:
                  experience: str, working_days: str, working_hours: str, 
                  category_id: str | ObjectId, job_level_id: str | ObjectId, 
                  work_type_id: str | ObjectId, employment_type_id: str | ObjectId, 
-                 education_level_id: str | ObjectId, required_skills: List[str], 
+                 education_level_id: str | ObjectId, required_skills: List[str], customer_skills: List[str],
                  province_id: str | ObjectId, closing_date: datetime,
                  district_id: Optional[str | ObjectId] = None, 
                  specific_schedule: Optional[List[dict]] = None,
@@ -31,6 +31,7 @@ class JobPostModel:
             
         # បំប្លែង Array នៃ skill_ids
         self.required_skills = [ObjectId(skill) if isinstance(skill, str) else skill for skill in required_skills]
+        self.customer_skills = customer_skills or []
         
         self.title = title
         self.description = description

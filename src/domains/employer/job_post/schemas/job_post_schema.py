@@ -38,6 +38,7 @@ class JobPostCreate(BaseModel):
     employment_type_id: str = Field(..., description="ID ប្រភេទកិច្ចសន្យា (Full-time...)")
     education_level_id: str = Field(..., description="ID កម្រិតវប្បធម៌")
     required_skills: List[str] = Field(..., min_length=1, description="List of skill_ids")
+    custom_skills: List[str] = Field([], description="List of custom skills")
     province_id: str = Field(..., description="ID ខេត្ត/ក្រុង")
     district_id: Optional[str] = Field(None, description="ID ស្រុក/ខណ្ឌ (មិនកាតព្វកិច្ច)")
     
@@ -71,6 +72,7 @@ class JobPostUpdate(BaseModel):
     employment_type_id: Optional[str] = Field(None)
     education_level_id: Optional[str] = Field(None)
     required_skills: Optional[List[str]] = Field(None, min_length=1)
+    custom_skills: Optional[List[str]] = Field(None)
     province_id: Optional[str] = Field(None)
     district_id: Optional[str] = Field(None)
     
@@ -105,6 +107,7 @@ class JobPostResponse(BaseModel):
     employment_type_id: str
     education_level_id: str
     required_skills: List[str]
+    custom_skills: List[str]
     province_id: str
     district_id: Optional[str]
     closing_date: datetime
