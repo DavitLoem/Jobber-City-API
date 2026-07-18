@@ -39,46 +39,47 @@ async def seed_database():
                 "role": "admin",
                 "is_active": True,
                 "is_profile_completed": True,
+                "onboarding_completed": False,
                 "verified_at": now,
-                "created_at": now, # អ្នកអាចលុប created_at ចេញក៏បាន ព្រោះប្រព័ន្ធ Upsert អាចកំណត់ $setOnInsert
+                "created_at": now, 
                 "updated_at": now
             },
-            {
-                "first_name": "Super",
-                "last_name": "Admin 2",
-                "email": "vitloem@gmail.com",
-                "password_hash": default_password,
-                "auth_provider": "local",
-                "role": "admin",
-                "is_active": True,
-                "is_profile_completed": True,
-                "verified_at": now,
-                "updated_at": now
-            },
-            {
-                "first_name": "Super",
-                "last_name": "Admin 3",
-                "email": "seatsatya168@gmail.com",
-                "password_hash": default_password,
-                "auth_provider": "local",
-                "role": "admin",
-                "is_active": True,
-                "is_profile_completed": True,
-                "verified_at": now,
-                "updated_at": now
-            },
-            {
-                "first_name": "Super",
-                "last_name": "Admin 3",
-                "email": "test@gmail.com",
-                "password_hash": default_password,
-                "auth_provider": "local",
-                "role": "admin",
-                "is_active": True,
-                "is_profile_completed": True,
-                "verified_at": now,
-                "updated_at": now
-            }, 
+            # {
+            #     "first_name": "Super",
+            #     "last_name": "Admin 2",
+            #     "email": "vitloem@gmail.com",
+            #     "password_hash": default_password,
+            #     "auth_provider": "local",
+            #     "role": "admin",
+            #     "is_active": True,
+            #     "is_profile_completed": True,
+            #     "verified_at": now,
+            #     "updated_at": now
+            # },
+            # {
+            #     "first_name": "Super",
+            #     "last_name": "Admin 3",
+            #     "email": "seatsatya168@gmail.com",
+            #     "password_hash": default_password,
+            #     "auth_provider": "local",
+            #     "role": "admin",
+            #     "is_active": True,
+            #     "is_profile_completed": True,
+            #     "verified_at": now,
+            #     "updated_at": now
+            # },
+            # {
+            #     "first_name": "Super",
+            #     "last_name": "Admin 3",
+            #     "email": "test@gmail.com",
+            #     "password_hash": default_password,
+            #     "auth_provider": "local",
+            #     "role": "admin",
+            #     "is_active": True,
+            #     "is_profile_completed": True,
+            #     "verified_at": now,
+            #     "updated_at": now
+            # }, 
         ]
 
         # 🎯 ប្រើប្រាស់ Bulk Write និង Upsert

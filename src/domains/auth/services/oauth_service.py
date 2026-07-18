@@ -39,13 +39,30 @@ async def login_with_google(request_data: GoogleAuthRequest) -> dict:
         if not user.get("is_active", True):
             raise HTTPException(status_code=403, detail="Account is deactivated.")
             
+        # ==========================================
+        # 🎯 ជំហានទី ១៖ បញ្ឈប់ការបញ្ជូនដោយស្វ័យប្រវត្តិ (The Hard Block)
+        # ==========================================
+        existing_role = user.get("role")
+        requested_role = request_data.role.value
+        
+        if existing_role != requested_role:
+            # បោះ Error 409 ជាមួយនឹង JSON detail ដើម្បីឱ្យ Flutter ងាយស្រួលចាប់យកទៅប្រើ
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error_code": "ROLE_MISMATCH",
+                    "existing_role": existing_role,
+                    "message": f"This email is already registered as a {existing_role}."
+                }
+            )
+            
         user_id = user["_id"]
         
         # Update រូបថតបើសិនជាអត់ទាន់មាន
         if not user.get("avatar_url") and avatar_url:
             await users_collection.update_one({"_id": user_id}, {"$set": {"avatar_url": avatar_url}})
             # Update ក្នុង variable ផ្ទាល់ ដើម្បីឱ្យ _generate_login_response យកទៅប្រើបានភ្លាមៗ
-            user["avatar_url"] = avatar_url 
+            user["avatar_url"] = avatar_url
             
     else:
         # 🎯 កែប្រែ៖ បង្កើតគណនីថ្មីដោយប្រើ first_name និង last_name
