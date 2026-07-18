@@ -42,7 +42,7 @@ class UserLogin(BaseModel):
 # 🎯 ថ្មី: Schema សម្រាប់អ្នកចុះឈ្មោះ ឬ Login តាម Google
 class GoogleAuthRequest(BaseModel):
     id_token: str = Field(..., description="Token received from Google Sign-In SDK")
-    role: RoleEnum = Field(default=RoleEnum.EMPLOYEE, description="Role: 'seeker' or 'employer'")
+    role: Optional[RoleEnum] = Field(default=None, description="Role: 'seeker' or 'employer' (Required for Registration only)")
 
 # Schema សម្រាប់សុំកូដ OTP ពេលភ្លេចពាក្យសម្ងាត់
 class ForgotPasswordRequest(BaseModel):

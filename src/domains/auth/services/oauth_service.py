@@ -25,7 +25,7 @@ async def login_with_google(request_data: GoogleAuthRequest) -> dict:
         )
         email = idinfo['email']
         
-        # 🎯 កែប្រែ៖ ទាញយក first_name និង last_name ពី Google ដើម្បីឱ្យត្រូវជាមួយ Schema ថ្មី
+        # ទាញយក first_name និង last_name ពី Google ដើម្បីឱ្យត្រូវជាមួយ Schema ថ្មី
         first_name = idinfo.get('given_name', 'Google')
         last_name = idinfo.get('family_name', 'User')
         avatar_url = idinfo.get('picture', None)
@@ -39,23 +39,24 @@ async def login_with_google(request_data: GoogleAuthRequest) -> dict:
         if not user.get("is_active", True):
             raise HTTPException(status_code=403, detail="Account is deactivated.")
             
-        # ==========================================
-        # 🎯 ជំហានទី ១៖ បញ្ឈប់ការបញ្ជូនដោយស្វ័យប្រវត្តិ (The Hard Block)
-        # ==========================================
         existing_role = user.get("role")
-        requested_role = request_data.role.value
         
-        if existing_role != requested_role:
-            # បោះ Error 409 ជាមួយនឹង JSON detail ដើម្បីឱ្យ Flutter ងាយស្រួលចាប់យកទៅប្រើ
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "error_code": "ROLE_MISMATCH",
-                    "existing_role": existing_role,
-                    "message": f"This email is already registered as a {existing_role}."
-                }
-            )
+        # 🎯 ជំហានទី ១៖ បើមានបោះ role មក (មកពីទំព័រ Register) ទើបយើងឆែក Role Mismatch
+        if request_data.role:
+            requested_role = request_data.role.value
             
+            if existing_role != requested_role:
+                # បោះ Error 409 ជាមួយនឹង JSON detail ដើម្បីឱ្យ Flutter ងាយស្រួលចាប់យកទៅប្រើ
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "error_code": "ROLE_MISMATCH",
+                        "existing_role": existing_role,
+                        "message": f"This email is already registered as a {existing_role}."
+                    }
+                )
+        
+        # បើអត់មានបោះ role ទេ (មកពីទំព័រ Login) ឬ បោះមកត្រូវ Role គ្នា គឺអនុញ្ញាតឱ្យចូល
         user_id = user["_id"]
         
         # Update រូបថតបើសិនជាអត់ទាន់មាន
@@ -65,7 +66,18 @@ async def login_with_google(request_data: GoogleAuthRequest) -> dict:
             user["avatar_url"] = avatar_url
             
     else:
-        # 🎯 កែប្រែ៖ បង្កើតគណនីថ្មីដោយប្រើ first_name និង last_name
+        # 🎯 ជំហានទី ២៖ ករណីរកមិនឃើញគណនីក្នុងប្រព័ន្ធ (Email ថ្មី)
+        if not request_data.role:
+            # បើអត់បោះ role មក (មកពីទំព័រ Login) យើងបដិសេធ ព្រោះយើងមិនអាច Auto-Register ឱ្យបានទេ
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error_code": "ACCOUNT_NOT_FOUND",
+                    "message": "We couldn't find an account associated with this Google email. Please register first."
+                }
+            )
+            
+        # បើមានបោះ role មក (មកពីទំព័រ Register) ធ្វើការបង្កើតគណនីថ្មី (Auto-register)
         new_user = create_user_model(
             first_name=first_name,
             last_name=last_name,
@@ -87,5 +99,5 @@ async def login_with_google(request_data: GoogleAuthRequest) -> dict:
         {"$set": {"last_login_at": datetime.now(timezone.utc)}}
     )
 
-    # 🎯 ប្រើប្រាស់អនុគមន៍រួម វានឹងរ៉ាប់រងការបង្កើត Token និងឆែក Onboarding ឱ្យដោយស្វ័យប្រវត្តិ
+    # ប្រើប្រាស់អនុគមន៍រួម វានឹងរ៉ាប់រងការបង្កើត Token និងឆែក Onboarding ឱ្យដោយស្វ័យប្រវត្តិ
     return await _generate_login_response(user, is_normal_login=False)
