@@ -59,6 +59,24 @@ async def get_my_job_posts(
         message="Get my job posts successfully", 
         data=result
     )
+    
+@router.get("/{job_id}", response_model=APIResponse[JobPostResponse])
+async def get_job_post_by_id(
+    job_id: str = Path(...),
+    current_user: dict = Depends(require_employer)
+):
+    """ទាញយកព័ត៌មានលម្អិតនៃការងារណាមួយតាមរយៈ ID"""
+    
+    user_id = str(current_user["_id"])
+    
+    # បញ្ជូនទៅ Service ធ្វើការ
+    result = await job_post_service.get_job_post_by_id(user_id, job_id)
+    
+    return APIResponse(
+        success=True, 
+        message="Get job post successfully", 
+        data=result
+    )
 
 @router.put("/{job_id}", response_model=APIResponse[JobPostResponse])
 async def update_job_post(

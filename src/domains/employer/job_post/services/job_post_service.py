@@ -157,6 +157,31 @@ class JobPostService:
 
         return jobs
     
+    async def get_job_post_by_id(self, user_id: str, job_id: str) -> dict:
+        """ទាញយកព័ត៌មានលម្អិតនៃការងារណាមួយ (Get Job by ID)"""
+        
+        if not ObjectId.is_valid(job_id):
+            raise HTTPException(status_code=400, detail="ID is not valid.")
+
+        # ១. រកមើល Company របស់ Employer សិន
+        company = await company_profiles_collection.find_one({"user_id": ObjectId(user_id)})
+        if not company:
+            raise HTTPException(status_code=403, detail="You must have a company profile.")
+
+        # ២. ទាញយកការងារដោយបញ្ជាក់ ID ព្រមទាំងឆែកថាជារបស់ក្រុមហ៊ុននេះពិតមែន (សុវត្ថិភាព)
+        job = await job_posts_collection.find_one({
+            "_id": ObjectId(job_id),
+            "company_id": company["_id"]
+        })
+
+        if not job:
+            raise HTTPException(
+                status_code=404, 
+                detail="Job post not found or you don't have permission to view it."
+            )
+
+        return self._format_response(job)
+    
     async def update_job_post(self, user_id: str, job_id: str, payload: JobPostUpdate) -> dict:
         """មុខងារសម្រាប់កែប្រែការងារចាស់"""
         
