@@ -6,14 +6,10 @@ class SeekerProfileModel:
     def __init__(
         self, 
         user_id: str | ObjectId, 
-        first_name: str, 
-        last_name: str, 
         **kwargs
     ):
         # 🎯 ព័ត៌មានគោលដំបូង (តម្រូវឱ្យមាន)
         self.user_id = ObjectId(user_id) if isinstance(user_id, str) else user_id
-        self.first_name = first_name
-        self.last_name = last_name
 
         # 🎯 រូបភាព និងភាគរយ
         self.image_url = kwargs.get("image_url")
@@ -25,7 +21,6 @@ class SeekerProfileModel:
         self.gender = kwargs.get("gender")
         self.marital_status = kwargs.get("marital_status")
         self.nationality = kwargs.get("nationality")
-        self.email = kwargs.get("email")
         self.phone_number = kwargs.get("phone_number")
         self.current_position = kwargs.get("current_position")
 

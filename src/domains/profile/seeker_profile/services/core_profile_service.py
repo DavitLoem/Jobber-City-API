@@ -63,119 +63,107 @@ async def get_seeker_profile(user_id: str) -> dict:
     user_oid = ObjectId(user_id)
     profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
     
+    user_account = await users_collection.find_one({"_id": user_oid})
+    if not user_account:
+        raise HTTPException(status_code=404, detail="User account not found")
+    
+    user_info = {
+        "first_name": user_account.get("first_name", ""),
+        "last_name": user_account.get("last_name", ""),
+        "email": user_account.get("email", "")
+    }
+    
     if not profile:
-        # 🎯 ទាញយកទិន្នន័យពី Table 'users' មកបំពេញអូតូ
-        user_account = await users_collection.find_one({"_id": user_oid})
+        empty_profile = SeekerProfileModel(user_id=user_id).to_create_dict()
+        merged_profile = {**empty_profile, **user_info}
         
-        first_name = ""
-        last_name = ""
-        email = ""
-        phone = ""
+        return helper_format_profile(merged_profile)
 
-        if user_account:
-            # 🎯 ឥឡូវនេះយើងគ្រាន់តែទាញយក first_name និង last_name ត្រង់ៗតែម្តង
-            first_name = user_account.get("first_name", "")
-            last_name = user_account.get("last_name", "")
-            email = user_account.get("email", "")
-            phone = user_account.get("phone_number", "")
-        
-        # បង្កើតទម្រង់ទទេរ ដោយមានភ្ជាប់ទិន្នន័យពី Account មកស្រាប់
-        empty_profile = SeekerProfileModel(
-            user_id=user_id, 
-            first_name=first_name, 
-            last_name=last_name,
-            email=email,
-            phone_number=phone
-        ).to_create_dict()
-        
-        return helper_format_profile(empty_profile)
-
-    return helper_format_profile(profile)
+    merged_profile = {**profile, **user_info}
+    return helper_format_profile(merged_profile)
 
 async def update_core_profile(user_id: str, data: SeekerCoreProfileUpdateRequest) -> dict:
-    """Update ព័ត៌មានគោលរបស់ Seeker (ប្រើ Upsert Logic)"""
+    """Update ព័ត៌មានគោលដោយបែងចែកការ Save ទៅកាន់ Tables ពីរដាច់ពីគ្នា"""
     
     user_oid = ObjectId(user_id)
     update_data = data.model_dump(exclude_unset=True)
-    update_data["onboarding_completed"] = True
 
     if not update_data:
         return await get_seeker_profile(user_id)
 
-    # ==========================================
-    # 🎯 ជួសជុល: ត្រួតពិនិត្យភាពត្រឹមត្រូវនៃ ObjectId មុននឹងបំប្លែង
-    # ==========================================
+    now = datetime.now(timezone.utc)
+
+    # 🎯 ជំហានទី ១: ញែកទិន្នន័យ និង Update ទៅកាន់ `users_collection`
+    
+    user_update_payload = {}
+    
+    # ប្រើ pop() ដើម្បីទាញយកផង និងលុបចេញពី update_data ផងកុំឱ្យវាសល់ទៅចូល profile
+    if "first_name" in update_data:
+        user_update_payload["first_name"] = update_data.pop("first_name")
+    if "last_name" in update_data:
+        user_update_payload["last_name"] = update_data.pop("last_name")
+    if "email" in update_data:
+        user_update_payload["email"] = update_data.pop("email")
+
+    if user_update_payload:
+        user_update_payload["updated_at"] = now
+        await users_collection.update_one(
+            {"_id": user_oid},
+            {"$set": user_update_payload}
+        )
+
+    # ប្រសិនបើមានតែការ Update ឈ្មោះ/Email តែគ្មានអ្វីផ្សេងទៀត
+    if not update_data:
+        return await get_seeker_profile(user_id)
+
+    # 🎯 ជំហានទី ២: បន្តការរៀបចំទិន្នន័យសម្រាប់ `seeker_profiles_collection`
+    update_data["onboarding_completed"] = True
+    update_data["updated_at"] = now
+
     if "date_of_birth" in update_data and isinstance(update_data["date_of_birth"], date):
         dt = update_data["date_of_birth"]
-        # បន្ថែមម៉ោង 00:00:00 ចូល ហើយកំណត់ម៉ោងជា UTC
         update_data["date_of_birth"] = datetime.combine(dt, datetime.min.time()).replace(tzinfo=timezone.utc)
     
     if "expertise_category_ids" in update_data:
         valid_ids = []
         for cid in update_data["expertise_category_ids"]:
             if not ObjectId.is_valid(cid):
-                raise HTTPException(status_code=400, detail=f"Category ID '{cid}' is not valid (must be a 24-character hex)")
+                raise HTTPException(status_code=400, detail=f"Category ID '{cid}' is not valid")
             valid_ids.append(ObjectId(cid))
         update_data["expertise_category_ids"] = valid_ids
 
     if update_data.get("province_id"):
         if not ObjectId.is_valid(update_data["province_id"]):
-            raise HTTPException(status_code=400, detail="Province ID is not valid (must be a 24-character hex)")
+            raise HTTPException(status_code=400, detail="Province ID is not valid")
         update_data["province_id"] = ObjectId(update_data["province_id"])
 
     if update_data.get("district_id"):
         if not ObjectId.is_valid(update_data["district_id"]):
-            raise HTTPException(status_code=400, detail="District ID is not valid (must be a 24-character hex)")
+            raise HTTPException(status_code=400, detail="District ID is not valid")
         update_data["district_id"] = ObjectId(update_data["district_id"])
-    # ==========================================
 
-    # ៣. អាប់ដេតម៉ោង
-    update_data["updated_at"] = datetime.now(timezone.utc)
-
-    # ៤. ឆែកមើលថាតើគាត់មាន Profile ហើយឬនៅ?
+    # ឆែកមើលថាតើគាត់មាន Profile ហើយឬនៅ
     existing_profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
 
     if existing_profile:
-        # ដកឈ្មោះចេញពី update_data ក្នុងករណីដែលគេមិនចង់កែឈ្មោះ 
-        # ប៉ុន្តែបើសិនគេចង់កែ វានឹងនៅតែ Update តាមធម្មតា
-        update_data.pop("first_name", None) 
-        update_data.pop("last_name", None)
-        # គណនាភាគរយថ្មី ដោយផ្អែកលើទិន្នន័យចាស់ បូកបញ្ជូលទិន្នន័យថ្មី
+        # Update Profile ដែលមានស្រាប់
         merged_profile = {**existing_profile, **update_data}
         update_data["profile_completion_percentage"] = calculate_completion_percentage(merged_profile)
         
-        # UPDATE
-        updated_profile = await seeker_profiles_collection.find_one_and_update(
+        await seeker_profiles_collection.update_one(
             {"user_id": user_oid},
-            {"$set": update_data},
-            return_document=True
+            {"$set": update_data}
         )
     else:
-        # CREATE NEW (បើគាត់ទើបតែ Login ហើយចុច Update យកតែម្តង)
-        
-        # ១. ទាញ (pop) ឈ្មោះចេញពី update_data ដើម្បីកុំឱ្យជាន់គ្នាពេលប្រើ **update_data
-        f_name = update_data.pop("first_name", "")
-        l_name = update_data.pop("last_name", "")
-        
-        # ២. បើគាត់អត់បានបោះឈ្មោះមកទេ យើងទៅទាញពីគណនី (users) មកបំពេញឱ្យ
-        if not f_name or not l_name:
-            user_account = await users_collection.find_one({"_id": user_oid})
-            if user_account:
-                f_name = f_name or user_account.get("first_name", "")
-                l_name = l_name or user_account.get("last_name", "")
-
-        # ៣. បង្កើត Model (ពេលនេះលែងជាន់គ្នាទៀតហើយ)
+        # បង្កើត Profile ថ្មី (ពេលនេះមិនត្រូវការ first_name និង last_name ក្នុង Model ទៀតទេ)
         new_profile_model = SeekerProfileModel(
             user_id=user_oid,
-            first_name=f_name,
-            last_name=l_name,
             **update_data
         )
-        
         new_profile_dict = new_profile_model.to_create_dict()
         new_profile_dict["profile_completion_percentage"] = calculate_completion_percentage(new_profile_dict)
         
         await seeker_profiles_collection.insert_one(new_profile_dict)
-        updated_profile = new_profile_dict
 
-    return helper_format_profile(updated_profile)
+    # ត្រឡប់ទិន្នន័យដោយហៅពី get_seeker_profile ដើម្បីប្រាកដថាបានទិន្នន័យពេញលេញ (មានឈ្មោះ និង Email)
+    return await get_seeker_profile(user_id)
