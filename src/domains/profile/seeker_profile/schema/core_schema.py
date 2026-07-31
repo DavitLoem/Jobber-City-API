@@ -25,9 +25,6 @@ class SeekerCoreProfileUpdateRequest(BaseModel):
     village: Optional[str] = Field(None, example="Village 1")
     street: Optional[str] = Field(None, example="Street 282")
     house_no: Optional[str] = Field(None, example="#12A")
-    
-    province_id: Optional[str] = Field(None, description="ID របស់ខេត្ត/ក្រុង")
-    district_id: Optional[str] = Field(None, description="ID របស់ស្រុក/ខណ្ឌ")
 
     # 🎯 ៤. ចំណង់ចំណូលចិត្ត និងការពិពណ៌នា (Preferences & Biography)
     biography: Optional[str] = Field(None, description="ការពិពណ៌នាសង្ខេបអំពីខ្លួនឯង")
