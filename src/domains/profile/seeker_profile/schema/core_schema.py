@@ -19,12 +19,15 @@ class SeekerCoreProfileUpdateRequest(BaseModel):
     phone_number: Optional[str] = Field(None, example="012345678")
 
     # 🎯 ៣. អាសយដ្ឋាន (Location)
-    province_id: Optional[str] = Field(None, description="ID របស់ខេត្ត/ក្រុង")
-    district_id: Optional[str] = Field(None, description="ID របស់ស្រុក/ខណ្ឌ")
+    address_province_id: Optional[str] = Field(None, description="ID ខេត្ត/ក្រុង នៃទីលំនៅបច្ចុប្បន្ន")
+    address_district_id: Optional[str] = Field(None, description="ID ស្រុក/ខណ្ឌ នៃទីលំនៅបច្ចុប្បន្ន")
     commune: Optional[str] = Field(None, example="Sangkat Boeng Keng Kang 1")
     village: Optional[str] = Field(None, example="Village 1")
     street: Optional[str] = Field(None, example="Street 282")
     house_no: Optional[str] = Field(None, example="#12A")
+    
+    province_id: Optional[str] = Field(None, description="ID របស់ខេត្ត/ក្រុង")
+    district_id: Optional[str] = Field(None, description="ID របស់ស្រុក/ខណ្ឌ")
 
     # 🎯 ៤. ចំណង់ចំណូលចិត្ត និងការពិពណ៌នា (Preferences & Biography)
     biography: Optional[str] = Field(None, description="ការពិពណ៌នាសង្ខេបអំពីខ្លួនឯង")
@@ -59,8 +62,10 @@ class SeekerProfileResponse(BaseModel):
     email: Optional[str] = None
     phone_number: Optional[str] = None
     
-    province_id: Optional[str] = None
-    district_id: Optional[str] = None
+
+    
+    address_province_id: Optional[str] = None
+    address_district_id: Optional[str] = None
     commune: Optional[str] = None
     village: Optional[str] = None
     street: Optional[str] = None
@@ -70,6 +75,8 @@ class SeekerProfileResponse(BaseModel):
     expected_salary_min: Optional[int] = None
     expected_salary_max: Optional[int] = None
     job_type_preferences: List[str] = []
+    province_id: Optional[str] = None
+    district_id: Optional[str] = None
     expertise_category_ids: List[str] = []
     skills: List[str] = []
 

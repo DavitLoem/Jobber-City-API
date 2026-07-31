@@ -31,6 +31,11 @@ class SeekerProfileModel:
         dist_id = kwargs.get("district_id")
         self.district_id = ObjectId(dist_id) if dist_id else None
         
+        
+        add_prov_id = kwargs.get("address_province_id")
+        self.address_province_id = ObjectId(add_prov_id) if add_prov_id else None
+        add_dist_id = kwargs.get("address_district_id")
+        self.address_district_id = ObjectId(add_dist_id) if add_dist_id else None
         self.commune = kwargs.get("commune")
         self.village = kwargs.get("village")
         self.street = kwargs.get("street")
