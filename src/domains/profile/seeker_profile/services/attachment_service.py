@@ -143,3 +143,39 @@ async def process_and_extract_cv(user_id: str, file: UploadFile) -> dict:
         "resume_url": resume_url,
         "parsed_data": extracted_data # បោះទិន្នន័យនេះទៅឱ្យ Frontend ប្រើ
     }
+    
+async def delete_cv(user_id: str) -> dict:
+    """
+    មុខងារសម្រាប់លុបឯកសារ CV (កំណត់ resume_url ឱ្យទៅជាទទេ) និងគណនាភាគរយ Profile ឡើងវិញ
+    """
+    user_oid = ObjectId(user_id)
+    
+    # ១. ស្វែងរក Profile ក្នុង Database[cite: 9]
+    profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found.")
+        
+    # ប្រសិនបើគាត់គ្មាន CV ស្រាប់ទេ យើងបោះ Error ប្រាប់[cite: 9]
+    if not profile.get("resume_url"):
+        raise HTTPException(status_code=400, detail="No resume found to delete.")
+
+    # ២. Update resume_url ទៅជា string ទទេ ("")[cite: 9]
+    updated_profile = await seeker_profiles_collection.find_one_and_update(
+        {"user_id": user_oid},
+        {"$set": {
+            "resume_url": "",
+            "updated_at": datetime.now(timezone.utc)
+        }},
+        return_document=True
+    )
+
+    # ៣. គណនាភាគរយ Profile សាជាថ្មី ព្រោះបានបាត់បង់ពិន្ទុ CV[cite: 9]
+    final_percentage = calculate_completion_percentage(updated_profile)
+    updated_profile = await seeker_profiles_collection.find_one_and_update(
+        {"user_id": user_oid},
+        {"$set": {"profile_completion_percentage": final_percentage}},
+        return_document=True
+    )
+
+    # ៤. បញ្ជូនទិន្នន័យ Profile ត្រឡប់ទៅវិញតាមទម្រង់ស្តង់ដារ[cite: 9]
+    return helper_format_profile(updated_profile)

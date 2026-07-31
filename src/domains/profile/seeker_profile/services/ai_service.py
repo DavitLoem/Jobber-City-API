@@ -1,4 +1,6 @@
 import json
+import asyncio
+import logging
 from google import genai
 from google.genai import types
 from fastapi import HTTPException, status
@@ -7,14 +9,14 @@ from src.core.config import settings
 # 🎯 បង្កើត Client តាមស្តង់ដារ SDK ថ្មី
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-async def analyze_cv_with_gemini(cv_text: str) -> dict:
+async def analyze_cv_with_gemini(cv_text: str, max_retries: int = 3) -> dict:
     """
-    បោះអត្ថបទ CV ទៅឱ្យ Gemini ដើម្បីវិភាគ និងទាញយកទិន្នន័យ។
+    បោះអត្ថបទ CV ទៅឱ្យ Gemini ដើម្បីវិភាគ និងទាញយកទិន្នន័យ (ភ្ជាប់ជាមួយប្រព័ន្ធការពារ Error 503)។
     """
     if not cv_text or len(cv_text.strip()) < 50:
         return {"is_cv": False, "reason": "The text is too short or unreadable. Please provide a valid CV."}
 
-    # 🎯 កែសម្រួល Prompt ឱ្យទាញយកទិន្នន័យបានកាន់តែលម្អិត និងស៊ីគ្នាជាមួយ Database
+    # 🎯 Prompt រក្សាទុកដដែល
     prompt = """
     You are an expert HR Technical Recruiter. Your task is to analyze the following extracted text from a document and determine if it is a Resume/CV.
     If it is a CV, extract the core information to auto-fill a candidate's profile.
@@ -62,31 +64,49 @@ async def analyze_cv_with_gemini(cv_text: str) -> dict:
     4. Ensure names and text formatting are clean and professional.
     """
 
-    try:
-        # ហៅទៅកាន់ Gemini API
-        response = client.models.generate_content(
-            model="gemini-3.5-flash", # ប្រើប្រាស់ Model ដែលអ្នកបានកំណត់
-            contents=f"{prompt}\n\nHere is the document text:\n---\n{cv_text}",
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", 
-                temperature=0.1 # 🎯 បន្ថែម Temperature ទាបដើម្បីឱ្យចម្លើយមានភាពជាក់លាក់ (Fact-based) មិនរវើរវាយ
+    for attempt in range(max_retries):
+        try:
+            # 🎯 ជួសជុល: ប្រើប្រាស់ client.aio សម្រាប់ Asynchronous call កុំឱ្យគាំង Server
+            response = await client.aio.models.generate_content(
+                model="gemini-3.6-flash", # 🎯 ជួសជុល: ប្តូរមកប្រើ 1.5-flash ដែលជា Model ត្រឹមត្រូវ
+                contents=f"{prompt}\n\nHere is the document text:\n---\n{cv_text}",
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json", 
+                    temperature=0.1
+                )
             )
-        )
-        
-        response_text = response.text.strip()
-        parsed_data = json.loads(response_text)
-        
-        return parsed_data
+            
+            response_text = response.text.strip()
+            parsed_data = json.loads(response_text)
+            
+            return parsed_data
 
-    except json.JSONDecodeError as e:
-        print(f"JSON Parse Error from AI: {e}\nResponse was: {response.text}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="The AI system could not extract data from this CV. Please try again."
-        )
-    except Exception as e:
-        print(f"Gemini API Error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="The AI system encountered an error. Please try again."
-        )
+        except json.JSONDecodeError as e:
+            print(f"JSON Parse Error from AI: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="The AI system could not extract data from this CV. Please try again."
+            )
+        except Exception as e:
+            error_msg = str(e)
+            
+            # 🎯 ចាប់យក Error 503 ឬ High Demand ហើយធ្វើការ Retry
+            if "503" in error_msg or "UNAVAILABLE" in error_msg or "high demand" in error_msg.lower():
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt # រង់ចាំ 1s, 2s, 4s រួចសាកល្បងម្តងទៀត
+                    logging.warning(f"Gemini API overloaded (503). Retrying in {wait_time}s... (Attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(wait_time)
+                    continue 
+                else:
+                    logging.error(f"Gemini API Error after {max_retries} attempts: {e}")
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="ប្រព័ន្ធ AI របស់យើងកំពុងមានអ្នកប្រើប្រាស់ច្រើន។ សូមមេត្តារង់ចាំបន្តិច រួចព្យាយាមម្តងទៀត។"
+                    )
+            else:
+                # បើជា Error ផ្សេង (មិនមែន 503) គឺបោះចេញតែម្តង
+                logging.error(f"Gemini API Error: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="The AI system encountered an error. Please try again."
+                )
