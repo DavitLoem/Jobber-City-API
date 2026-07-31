@@ -73,9 +73,9 @@ async def upload_profile_image(user_id: str, file: UploadFile) -> dict:
 
     return helper_format_profile(updated_profile)
 
-async def upload_and_parse_cv(user_id: str, file: UploadFile) -> dict:
+async def process_and_extract_cv(user_id: str, file: UploadFile) -> dict:
     """
-    ដំណើរការ៖ ឆែកឯកសារ ➔ អានអត្ថបទ ➔ ឱ្យ AI វិភាគ ➔ Upload ➔ Auto-Fill ចូល Database
+    ដំណើរការ៖ ឆែកឯកសារ ➔ អានអត្ថបទ ➔ ឱ្យ AI វិភាគ ➔ Upload បើពិតជា CV ➔ បោះ JSON ឱ្យ Frontend (មិន Save ទេ)
     """
     user_oid = ObjectId(user_id)
     
@@ -87,7 +87,7 @@ async def upload_and_parse_cv(user_id: str, file: UploadFile) -> dict:
     file_size = file.file.tell()
     file.file.seek(0)
     
-    if file_size > 5 * 1024 * 1024: # កំណត់ត្រឹម 5MB
+    if file_size > 5 * 1024 * 1024: 
         raise HTTPException(status_code=413, detail="File too large! Please upload a file smaller than 5MB.")
 
     # ២. ទាញយកអត្ថបទពី PDF
@@ -103,84 +103,43 @@ async def upload_and_parse_cv(user_id: str, file: UploadFile) -> dict:
         reason = ai_result.get("reason", "The uploaded file is not a valid CV.")
         raise HTTPException(status_code=400, detail=f"The file has been rejected: {reason}")
 
-    # ៥. Upload ឯកសារពិតទៅ Cloudinary
+    # ៥. Upload ឯកសារពិតទៅ Cloudinary ព្រោះ AI បញ្ជាក់ថាវាជា CV មែន
     upload_res = upload_document(file.file, folder="jobber_city/resumes")
     if not upload_res.get("success"):
         raise HTTPException(status_code=500, detail=f"Failed to Upload CV: {upload_res.get('message')}")
 
     resume_url = upload_res.get("url")
 
-    # ៦. Smart Data Merging (បញ្ចូលទិន្នន័យទៅក្នុង Profile)
+    # ៦. ធ្វើការរក្សាទុកតែ resume_url ប៉ុណ្ណោះ
     profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
     if not profile:
         raise HTTPException(status_code=404, detail="Please update your profile information first.")
 
+    updated_profile = await seeker_profiles_collection.find_one_and_update(
+        {"user_id": user_oid},
+        {"$set": {
+            "resume_url": resume_url,
+            "updated_at": datetime.now(timezone.utc)
+        }},
+        return_document=True
+    )
+    
+    # គណនាភាគរយ Profile សាជាថ្មី ព្រោះមានការ Update resume_url
+    final_percentage = calculate_completion_percentage(updated_profile)
+    await seeker_profiles_collection.update_one(
+        {"user_id": user_oid},
+        {"$set": {"profile_completion_percentage": final_percentage}}
+    )
+
+    # ៧. រៀបចំទិន្នន័យសម្រាប់បោះទៅ Frontend
     extracted_data = ai_result.get("extracted_data", {})
     
-    # ៦.១ កំណត់អថេរសម្រាប់ Update ធម្មតា
-    update_fields = {
+    # 💡 Logic ថ្មី៖ លុប personal_info ចេញ បើគាត់ធ្លាប់មានលេខទូរស័ព្ទ ឬ អ៊ីមែលរួចហើយក្នុង DB
+    # (យើងសន្មតថាបើរូបគាត់មាន phone ឬ email មានន័យថាគាត់បំពេញ Profile រួចហើយ)
+    if profile.get("phone_number") or profile.get("email"):
+        extracted_data.pop("personal_info", None)
+
+    return {
         "resume_url": resume_url,
-        "updated_at": datetime.now(timezone.utc)
+        "parsed_data": extracted_data # បោះទិន្នន័យនេះទៅឱ្យ Frontend ប្រើ
     }
-
-    # ៦.២ បញ្ចូលជំនាញ (Skills) ដោយការពារកុំឱ្យស្ទួនគ្នា
-    current_skills = profile.get("skills", [])
-    new_skills = extracted_data.get("skills", [])
-    if new_skills:
-        combined_skills = list(set(current_skills + new_skills)) # set() ជួយលុបពាក្យស្ទួនអូតូ
-        update_fields["skills"] = combined_skills
-
-    # ៦.៣ រៀបចំកញ្ចប់សម្រាប់ $push Experiences និង Educations
-    push_fields = {}
-
-    def parse_ai_date(date_str):
-        """បំប្លែងថ្ងៃខែដែល AI បោះមក ទៅជា Datetime របស់ MongoDB"""
-        if not date_str: return None
-        try:
-            return datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-        except ValueError:
-            return None
-
-    # បញ្ចូល Experiences
-    new_exps = extracted_data.get("experiences", [])
-    if new_exps:
-        formatted_exps = []
-        for exp in new_exps:
-            exp["id"] = str(uuid.uuid4()) # បង្កើត ID ឱ្យធាតុនីមួយៗ
-            exp["start_date"] = parse_ai_date(exp.get("start_date"))
-            exp["end_date"] = parse_ai_date(exp.get("end_date"))
-            formatted_exps.append(exp)
-        # ប្រើ $each ដើម្បីញាត់ Array ចូលក្នុង Array
-        push_fields["experiences"] = {"$each": formatted_exps} 
-
-    # បញ្ចូល Educations
-    new_edus = extracted_data.get("educations", [])
-    if new_edus:
-        formatted_edus = []
-        for edu in new_edus:
-            edu["id"] = str(uuid.uuid4())
-            edu["start_date"] = parse_ai_date(edu.get("start_date"))
-            edu["end_date"] = parse_ai_date(edu.get("end_date"))
-            formatted_edus.append(edu)
-        push_fields["educations"] = {"$each": formatted_edus}
-
-    # ៧. បញ្ជូនចូល Database
-    update_query = {"$set": update_fields}
-    if push_fields:
-        update_query["$push"] = push_fields
-
-    updated_profile = await seeker_profiles_collection.find_one_and_update(
-        {"user_id": user_oid},
-        update_query,
-        return_document=True
-    )
-
-    # ៨. គណនាភាគរយ Profile សាជាថ្មី
-    final_percentage = calculate_completion_percentage(updated_profile)
-    updated_profile = await seeker_profiles_collection.find_one_and_update(
-        {"user_id": user_oid},
-        {"$set": {"profile_completion_percentage": final_percentage}},
-        return_document=True
-    )
-
-    return helper_format_profile(updated_profile)

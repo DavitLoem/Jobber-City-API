@@ -33,21 +33,22 @@ async def upload_profile_image_route(
         data=result
     )
     
-@router.post("/upload-cv", response_model=APIResponse[SeekerProfileResponse])
-async def upload_cv_and_autofill_route(
+@router.post("/upload-cv", response_model=APIResponse[dict]) # 🎯 ប្តូរ Response Model
+async def upload_cv_and_extract_route( # 🎯 ប្តូរឈ្មោះមុខងារឱ្យត្រូវនឹង Flow ថ្មី
     file: UploadFile = File(...),
     current_user: dict = Depends(require_seeker)
 ):
     """
     Upload CV ជាទម្រង់ PDF។ 
-    ប្រព័ន្ធនឹងប្រើ AI ពិនិត្យភាពត្រឹមត្រូវ និងទាញយកទិន្នន័យពី CV មកបំពេញក្នុង Profile ដោយស្វ័យប្រវត្តិ។
+    ប្រព័ន្ធនឹងប្រើ AI ពិនិត្យភាពត្រឹមត្រូវ Upload រួចបោះទិន្នន័យ (JSON) ត្រឡប់ទៅ Frontend ដើម្បីផ្ទៀងផ្ទាត់។
     """
     user_id = current_user.get("id") or current_user.get("_id")
     
-    result = await attachment_service.upload_and_parse_cv(str(user_id), file)
+    # 🎯 ហៅមុខងារថ្មី
+    result = await attachment_service.process_and_extract_cv(str(user_id), file)
     
     return APIResponse(
         success=True,
-        message="CV uploaded successfully",
+        message="CV processed successfully. Please review the extracted data.",
         data=result
     )
