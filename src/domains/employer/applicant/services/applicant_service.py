@@ -61,6 +61,10 @@ class ApplicantService:
                 "last_name": seeker.get("last_name", ""),
                 "profile_image_url": seeker.get("profile_image_url"),
                 "current_position": seeker.get("current_position", ""),
+                
+                "skills": seeker.get("skills", []), 
+                "years_of_experience": seeker.get("years_of_experience", 0), 
+                
                 "resume_url": app.get("resume_url"),
                 "cover_letter": app.get("cover_letter"),
                 "status": app.get("status"),
