@@ -6,7 +6,8 @@ from src.core.mongo import (
     job_posts_collection, 
     seeker_profiles_collection, 
     job_applications_collection, 
-    company_profiles_collection
+    company_profiles_collection,
+    users_collection
 )
 from src.domains.profile.seeker_profile.services.core_profile_service import helper_format_profile
 
@@ -46,7 +47,16 @@ class ApplicantService:
                 }
             },
             # ប្រើ preserveNullAndEmptyArrays ដើម្បីកុំឱ្យបាត់ទិន្នន័យ ទោះ Seeker លុប Profile ក៏ដោយ
-            {"$unwind": {"path": "$seeker_info", "preserveNullAndEmptyArrays": True}}
+            {"$unwind": {"path": "$seeker_info", "preserveNullAndEmptyArrays": True}},
+            {
+                "$lookup": {
+                    "from": users_collection.name,
+                    "localField": "seeker_user_id",
+                    "foreignField": "_id",
+                    "as": "user_info"
+                }
+            },
+            {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}}
         ]
         
         cursor = job_applications_collection.aggregate(pipeline)
@@ -54,11 +64,12 @@ class ApplicantService:
         applicants = []
         async for app in cursor:
             seeker = app.get("seeker_info", {})
+            user = app.get("user_info", {})
             applicants.append({
                 "application_id": str(app["_id"]),
                 "seeker_user_id": str(app["seeker_user_id"]),
-                "first_name": seeker.get("first_name", "Unknown"),
-                "last_name": seeker.get("last_name", ""),
+                "first_name": user.get("first_name", "Unknown"),
+                "last_name": user.get("last_name", ""),
                 "profile_image_url": seeker.get("profile_image_url"),
                 "current_position": seeker.get("current_position", ""),
                 
