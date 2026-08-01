@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 # ==========================================
@@ -30,6 +30,9 @@ class ApplicantResponse(BaseModel):
     last_name: str
     profile_image_url: Optional[str] = None
     current_position: Optional[str] = None
+    
+    skills: List[str] = []
+    years_of_experience: int = 0
     
     # ព័ត៌មានពីការដាក់ពាក្យផ្ទាល់
     resume_url: Optional[str] = None
