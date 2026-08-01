@@ -28,6 +28,7 @@ class ApplicantResponse(BaseModel):
     # ព័ត៌មានដែល Join ចេញពី Seeker Profile
     first_name: str
     last_name: str
+    job_title: str
     profile_image_url: Optional[str] = None
     current_position: Optional[str] = None
     
