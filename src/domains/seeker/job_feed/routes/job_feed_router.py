@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from typing import List
+from typing import List, Optional
 
 from fastapi.params import Depends
 from src.core.response import APIResponse
@@ -21,11 +21,20 @@ router = APIRouter(
 async def get_recent_jobs_route(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50),
+    category_id: Optional[str] = Query(None, description="ID របស់ Category សម្រាប់ Filter"), # 🎯 បន្ថែមទីនេះ
     current_user: dict = Depends(get_current_user)
 ):
     """សម្រាប់បង្ហាញនៅ Section 'ការងារថ្មីៗ' (តម្រៀបតាមម៉ោង)"""
     user_id = str(current_user["_id"])
-    result = await job_feed_service.get_jobs(user_id=user_id, feed_type="recent", page=page, limit=limit)
+    
+    # 🎯 បញ្ជូន category_id ទៅ Service
+    result = await job_feed_service.get_jobs(
+        user_id=user_id, 
+        feed_type="recent", 
+        page=page, 
+        limit=limit,
+        category_id=category_id 
+    )
     return APIResponse(success=True, message="Get recent jobs", data=result)
 
 @router.get("/recommended", response_model=APIResponse[List[JobFeedResponse]])

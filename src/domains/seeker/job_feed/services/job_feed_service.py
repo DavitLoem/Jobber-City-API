@@ -47,7 +47,7 @@ class JobFeedService:
             "match_percentage": int(match_score) 
         }
 
-    async def get_jobs(self, user_id: str, feed_type: str = "recent", page: int = 1, limit: int = 10) -> list:
+    async def get_jobs(self, user_id: str, feed_type: str = "recent", page: int = 1, limit: int = 10, category_id: str = None) -> list:
         """ទាញយកការងារចុងក្រោយបំផុត (Recent Jobs) ជាមួយមុខងារ Pagination"""
     
         skip = (page - 1) * limit
@@ -61,10 +61,14 @@ class JobFeedService:
             sort_stage = {"$sort": {"match_percentage": -1, "created_at": -1}}
         else: # លំនាំដើមគឺ "recent"
             sort_stage = {"$sort": {"created_at": -1}}
+            
+        match_condition = {"status": "active"}
+        if category_id and ObjectId.is_valid(category_id):
+            match_condition["category_id"] = ObjectId(category_id)
         
         pipeline = [
             # ១. ជ្រើសរើសយកតែការងារណាដែលកំពុង Active
-            {"$match": {"status": "active"}},
+            {"$match": match_condition},
             
             # 💡 --- THE MATCHING ENGINE --- 💡
             # ក. រកចំនួន Skills ដែលជាន់គ្នា និងឆែកមើល Category
