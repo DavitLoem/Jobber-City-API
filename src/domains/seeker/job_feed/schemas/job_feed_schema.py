@@ -35,4 +35,5 @@ class JobFeedResponse(BaseModel):
     # គ្រប់គ្រងប្រព័ន្ធ[cite: 13]
     created_at: datetime
     is_saved: bool = Field(False, description="បញ្ជាក់ថា Seeker បានចុច Save ទុកឬអត់")
+    is_applied: bool = Field(False, description="បញ្ជាក់ថា Seeker បាន apply ឬអត់")
     match_percentage: Optional[int] = Field(None, description="ភាគរយស័ក្តិសម (ឧ. 80)")
