@@ -13,76 +13,87 @@ from src.domains.profile.seeker_profile.services.core_profile_service import hel
 
 class ApplicantService:
 
-    async def get_applicants_by_job(self, employer_user_id: str, job_id: str, status_filter: str = "all") -> list:
-        """ទាញយកបញ្ជីអ្នកដាក់ពាក្យ ដោយចាត់ថ្នាក់តាម Job នីមួយៗ"""
-        
-        # ១. ឆែកមើល Company របស់ Employer
-        company = await company_profiles_collection.find_one({"user_id": ObjectId(employer_user_id)})
-        if not company:
-            raise HTTPException(status_code=403, detail="company profile not found for this employer.")
+    from bson import ObjectId
+from fastapi import HTTPException
 
-        # ២. ឆែកមើល Job ថាជារបស់ក្រុមហ៊ុនគាត់ពិតមែនឬអត់ (សុវត្ថិភាពទិន្នន័យ)
-        job = await job_posts_collection.find_one({
-            "_id": ObjectId(job_id), 
-            "company_id": company["_id"]
-        })
-        if not job:
-            raise HTTPException(status_code=404, detail="Job not found or it does not belong to you.")
+# នៅក្នុង class ApplicantService:
+async def get_applicants_by_job(self, employer_user_id: str, job_id: str, status_filter: str = "all") -> list:
+    query = {}
 
-        # ៣. រៀបចំ Query សម្រាប់ទាញយក (ដោយមាន Filter តាម Status)
-        query = {"job_id": ObjectId(job_id)}
-        if status_filter and status_filter.lower() != "all":
-            query["status"] = status_filter.lower()
+    # ១. ការពារសុវត្ថិភាព៖ ទាញយក company_id របស់ Employer ដើម្បីប្រាកដថាគាត់មើលឃើញតែបេក្ខជនរបស់គាត់
+    employer_profile = await company_profiles_collection.find_one({"user_id": ObjectId(employer_user_id)})
+    if not employer_profile:
+        raise HTTPException(status_code=403, detail="Employer profile not found.")
+        
+    company_id = employer_profile["_id"]
 
-        # ៤. Join ទិន្នន័យ Application ជាមួយ Seeker Profile
-        pipeline = [
-            {"$match": query},
-            {"$sort": {"applied_at": -1}}, # យកអ្នកដាក់ពាក្យថ្មីៗមកមុនគេ
-            {
-                "$lookup": {
-                    "from": seeker_profiles_collection.name,
-                    "localField": "seeker_user_id",
-                    "foreignField": "user_id",
-                    "as": "seeker_info"
-                }
-            },
-            # ប្រើ preserveNullAndEmptyArrays ដើម្បីកុំឱ្យបាត់ទិន្នន័យ ទោះ Seeker លុប Profile ក៏ដោយ
-            {"$unwind": {"path": "$seeker_info", "preserveNullAndEmptyArrays": True}},
-            {
-                "$lookup": {
-                    "from": users_collection.name,
-                    "localField": "seeker_user_id",
-                    "foreignField": "_id",
-                    "as": "user_info"
-                }
-            },
-            {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}}
-        ]
-        
-        cursor = job_applications_collection.aggregate(pipeline)
-        
-        applicants = []
-        async for app in cursor:
-            seeker = app.get("seeker_info", {})
-            user = app.get("user_info", {})
-            applicants.append({
-                "application_id": str(app["_id"]),
-                "seeker_user_id": str(app["seeker_user_id"]),
-                "first_name": user.get("first_name", "Unknown"),
-                "last_name": user.get("last_name", ""),
-                "profile_image_url": seeker.get("profile_image_url"),
-                "current_position": seeker.get("current_position", ""),
-                
-                "skills": seeker.get("skills", []), 
-                "years_of_experience": seeker.get("years_of_experience", 0), 
-                
-                "resume_url": app.get("resume_url"),
-                "cover_letter": app.get("cover_letter"),
-                "status": app.get("status"),
-                "applied_at": app.get("applied_at")
-            })
+    # ២. ឆែកមើលថាតើគាត់ជ្រើសរើសមើលការងារទាំងអស់ (All Jobs) ឬការងារតែមួយ
+    if job_id.lower() == "all":
+        # បើ All Jobs: ទាញយកបេក្ខជនទាំងអស់ដែលដាក់ពាក្យមកកាន់ក្រុមហ៊ុននេះ
+        query["company_id"] = company_id
+    else:
+        # បើជា Job ជាក់លាក់: ត្រូវឆែកមើលថាវាជាទម្រង់ ObjectId ត្រឹមត្រូវឬអត់ មុននឹងបំប្លែង
+        if not ObjectId.is_valid(job_id):
+            raise HTTPException(status_code=400, detail="Invalid Job ID format.")
             
-        return applicants
+        query["job_id"] = ObjectId(job_id)
+        query["company_id"] = company_id # ជាន់ផ្ទួនសុវត្ថិភាពមួយជាន់ទៀតកុំឱ្យឆ្លងទិន្នន័យក្រុមហ៊ុនផ្សេង
+
+    # ៣. ត្រងតាម Status (New, Shortlisted,...)
+    if status_filter and status_filter.lower() != "all":
+        query["status"] = status_filter.lower()
+
+    # ៤. Pipeline សម្រាប់ Join ទិន្នន័យ (យកកូដចាស់របស់អ្នកមកដាក់បន្ត...)
+    pipeline = [
+        {"$match": query},
+        {"$sort": {"applied_at": -1}},
+        
+        # 🔗 Join ទី១៖ ទាញយក Profile របស់ Seeker (រូបភាព, បទពិសោធន៍, ជំនាញ)
+        {
+            "$lookup": {
+                "from": seeker_profiles_collection.name,
+                "localField": "seeker_user_id",
+                "foreignField": "user_id",
+                "as": "seeker_info"
+            }
+        },
+        {"$unwind": {"path": "$seeker_info", "preserveNullAndEmptyArrays": True}},
+        
+        # 🔗 Join ទី២៖ ទាញយកទិន្នន័យ User ផ្ទាល់ (ដើម្បីយក First Name និង Last Name)
+        {
+            "$lookup": {
+                "from": users_collection.name,
+                "localField": "seeker_user_id",
+                "foreignField": "_id",
+                "as": "user_info"
+            }
+        },
+        {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}}
+    ]
+    
+    cursor = job_applications_collection.aggregate(pipeline)
+    
+    applicants = []
+    async for app in cursor:
+        seeker = app.get("seeker_info", {})
+        user = app.get("user_info", {}) 
+        
+        applicants.append({
+            "application_id": str(app["_id"]),
+            "seeker_user_id": str(app["seeker_user_id"]),
+            "first_name": user.get("first_name", "Unknown"),
+            "last_name": user.get("last_name", ""),
+            "profile_image_url": seeker.get("profile_image_url"),
+            "current_position": seeker.get("current_position", ""),
+            "skills": seeker.get("skills", []), 
+            "years_of_experience": seeker.get("years_of_experience", 0), 
+            "resume_url": app.get("resume_url"),
+            "cover_letter": app.get("cover_letter"),
+            "status": app.get("status"),
+            "applied_at": app.get("applied_at")
+        })
+        
+    return applicants
 
     async def update_applicant_status(self, employer_user_id: str, application_id: str, new_status: str) -> dict:
         """ផ្លាស់ប្តូរស្ថានភាពបេក្ខជន (ឧ. ហៅមកសម្ភាសន៍ ឬបដិសេធ)"""
