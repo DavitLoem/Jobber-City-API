@@ -14,7 +14,7 @@ router = APIRouter(
     dependencies=[Depends(require_seeker)]
 )
 
-@router.post("/upload-image", response_model=APIResponse[SeekerProfileResponse])
+@router.post("/upload-image", response_model=APIResponse[dict]) 
 async def upload_profile_image_route(
     file: UploadFile = File(...),
     current_user: dict = Depends(require_seeker)
