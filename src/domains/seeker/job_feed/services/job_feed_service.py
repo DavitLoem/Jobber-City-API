@@ -6,7 +6,7 @@ class JobFeedService:
     def _format_feed_response(self, job_doc: dict) -> dict:
         """បំប្លែងទិន្នន័យដែលបាន Join រួច ទៅជាទម្រង់ JobFeedResponse"""
         
-        # រៀបចំទីតាំង (ឧ. រុស្សីកែវ, ភ្នំពេញ)
+        # រៀបចំទីតាំង (ឧ. រុស្សីកែវ, ភ្នំពេញ) 
         district_name = job_doc.get("district", {}).get("name_en", "")
         province_name = job_doc.get("province", {}).get("name_en", "")
         
@@ -17,22 +17,34 @@ class JobFeedService:
         else:
             location = "Unknown Location"
             
-        match_score = job_doc.get("match_percentage", 0)
+        match_score = job_doc.get("match_percentage", 0) 
             
         return {
-            "id": str(job_doc["_id"]),
-            "title": job_doc.get("title", ""),
-            "min_salary": job_doc.get("min_salary", 0),
-            "max_salary": job_doc.get("max_salary", 0),
-            "salary_period": job_doc.get("salary_period", ""),
-            "company_name": job_doc.get("company", {}).get("company_name", "Unknown Company"),
-            "logo_url": job_doc.get("company", {}).get("logo_url"),
-            "location": location,
-            "employment_type": job_doc.get("employment_type", {}).get("name", "N/A"),
-            "work_type": job_doc.get("work_type", {}).get("name", "N/A"),
-            "created_at": job_doc.get("created_at"),
+            "id": str(job_doc["_id"]), 
+            "title": job_doc.get("title", ""), 
+            "min_salary": job_doc.get("min_salary", 0), 
+            "max_salary": job_doc.get("max_salary", 0), 
+            "salary_period": job_doc.get("salary_period", ""), 
+            
+            # 🎯 បន្ថែមទិន្នន័យ Detail ត្រង់នេះ (ទាញចេញពី Database)
+            "description": job_doc.get("description", []),
+            "requirements": job_doc.get("requirements", []),
+            "benefits": job_doc.get("benefits", []),
+            "experience": job_doc.get("experience", ""),
+            "working_days": job_doc.get("working_days", ""),
+            "working_hours": job_doc.get("working_hours", ""),
+            "is_negotiable": job_doc.get("is_negotiable", True),
+            "headcount": job_doc.get("headcount", 1),
+            "closing_date": job_doc.get("closing_date"),
+            
+            "company_name": job_doc.get("company", {}).get("company_name", "Unknown Company"), 
+            "logo_url": job_doc.get("company", {}).get("logo_url"), 
+            "location": location, 
+            "employment_type": job_doc.get("employment_type", {}).get("name", "N/A"), 
+            "work_type": job_doc.get("work_type", {}).get("name", "N/A"), 
+            "created_at": job_doc.get("created_at"), 
             "is_saved": False, 
-            "match_percentage": int(match_score)
+            "match_percentage": int(match_score) 
         }
 
     async def get_jobs(self, user_id: str, feed_type: str = "recent", page: int = 1, limit: int = 10) -> list:
