@@ -5,7 +5,8 @@ from src.core.mongo import (
     education_levels_collection,
     employment_types_collection,
     work_types_collection,
-    industries_collection
+    industries_collection,
+    skills_collection
 )
 
 # ១. រៀបចំទិន្នន័យ (Mock Data) សម្រាប់ Master Data នីមួយៗ
@@ -69,6 +70,29 @@ master_data_configs = [
             {"name": "Remote", "is_active": True},
             {"name": "Hybrid", "is_active": True},
             {"name": "Field Work", "is_active": True}
+        ]
+    },
+    {
+        "name": "Skills",
+        "collection": skills_collection,
+        "data": [
+            # Hard Skills / Technical Skills
+            {"name": "Python", "is_active": True},
+            {"name": "JavaScript", "is_active": True},
+            {"name": "Flutter", "is_active": True},
+            {"name": "React", "is_active": True},
+            {"name": "Node.js", "is_active": True},
+            {"name": "SQL", "is_active": True},
+            {"name": "MongoDB", "is_active": True},
+            {"name": "Data Analysis", "is_active": True},
+            {"name": "UI/UX Design", "is_active": True},
+            {"name": "Digital Marketing", "is_active": True},
+            # Soft Skills / General Skills
+            {"name": "Project Management", "is_active": True},
+            {"name": "Communication", "is_active": True},
+            {"name": "Problem Solving", "is_active": True},
+            {"name": "Team Leadership", "is_active": True},
+            {"name": "Time Management", "is_active": True}
         ]
     }
 ]

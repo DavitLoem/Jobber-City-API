@@ -49,8 +49,8 @@ class SeekerProfileResponse(BaseModel):
     profile_completion_percentage: int
     onboarding_completed: bool = False
     
-    first_name: str
-    last_name: str
+    first_name: Optional[str]
+    last_name: Optional[str] = None
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     marital_status: Optional[str] = None
@@ -58,7 +58,6 @@ class SeekerProfileResponse(BaseModel):
     current_position: Optional[str] = None
     email: Optional[str] = None
     phone_number: Optional[str] = None
-    
 
     
     address_province_id: Optional[str] = None
