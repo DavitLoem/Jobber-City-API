@@ -43,6 +43,15 @@ class ApplicantService:
             {"$sort": {"applied_at": -1}},
             {
                 "$lookup": {
+                    "from": job_posts_collection.name,
+                    "localField": "job_id",
+                    "foreignField": "_id",
+                    "as": "job_info"
+                }
+            },
+            {"$unwind": {"path": "$job_info", "preserveNullAndEmptyArrays": True}},
+            {
+                "$lookup": {
                     "from": seeker_profiles_collection.name,
                     "localField": "seeker_user_id",
                     "foreignField": "user_id",
@@ -67,10 +76,12 @@ class ApplicantService:
         async for app in cursor:
             seeker = app.get("seeker_info", {})
             user = app.get("user_info", {}) 
+            job = app.get("job_info", {})
             
             applicants.append({
                 "application_id": str(app["_id"]),
                 "seeker_user_id": str(app["seeker_user_id"]),
+                "job_title": job.get("title", "Unknown Job"),
                 "first_name": user.get("first_name", "Unknown"),
                 "last_name": user.get("last_name", ""),
                 "profile_image_url": seeker.get("profile_image_url"),
