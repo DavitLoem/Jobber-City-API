@@ -1,5 +1,5 @@
 from bson import ObjectId
-from src.core.mongo import job_posts_collection, districts_collection, provinces_collection, company_profiles_collection, employment_types_collection, work_types_collection, seeker_profiles_collection
+from src.core.mongo import job_posts_collection, districts_collection, provinces_collection, company_profiles_collection, employment_types_collection, work_types_collection, seeker_profiles_collection, job_applications_collection
 
 class JobFeedService:
     
@@ -44,6 +44,7 @@ class JobFeedService:
             "work_type": job_doc.get("work_type", {}).get("name", "N/A"), 
             "created_at": job_doc.get("created_at"), 
             "is_saved": False, 
+            "is_applied": job_doc.get("is_applied", False),
             "match_percentage": int(match_score) 
         }
 
@@ -163,7 +164,28 @@ class JobFeedService:
                     "as": "work_type"
                 }
             },
-            {"$unwind": {"path": "$work_type", "preserveNullAndEmptyArrays": True}}
+            {"$unwind": {"path": "$work_type", "preserveNullAndEmptyArrays": True}},
+            # 9. តភ្ជាប់ជាមួយ Job Applications
+            {
+                "$lookup": {
+                    "from": job_applications_collection.name,
+                    "let": {"jobId": "$_id", "seekerId": user_oid},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$eq": ["$job_id", "$$jobId"]},
+                                    {"$eq": ["$seeker_user_id", "$$seekerId"]}
+                                ]
+                            }
+                        }}
+                    ],
+                    "as": "user_application"
+                }
+            },
+            {"$addFields": {
+                "is_applied": {"$gt": [{"$size": "$user_application"}, 0]}
+            }}
         ]
 
         # បញ្ជាឱ្យ MongoDB ដំណើរការ Pipeline
