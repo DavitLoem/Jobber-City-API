@@ -55,6 +55,8 @@ class SeekerProfileModel:
 
         # 🎯 តំណភ្ជាប់ និងឯកសារ
         self.resume_url = kwargs.get("resume_url")
+        self.resume_filename = kwargs.get("resume_filename") 
+        self.resume_public_id = kwargs.get("resume_public_id") 
         self.portfolio_url = kwargs.get("portfolio_url")
         self.linkedin_url = kwargs.get("linkedin_url")
 

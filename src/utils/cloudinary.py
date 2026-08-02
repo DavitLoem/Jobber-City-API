@@ -90,3 +90,26 @@ def delete_image(public_id: str) -> dict:
             "success": False,
             "message": str(e)
         }
+        
+def delete_document(public_id: str) -> dict:
+    """
+    មុខងារសម្រាប់លុបឯកសារ PDF ចេញពី Cloudinary
+    """
+    try:
+        # សាកល្បងលុបជាទម្រង់ image ជាមុន (ព្រោះ Cloudinary ច្រើនតែចាត់ទុក PDF ជា Image ដើម្បីបង្កើត Thumbnail)
+        result = destroy(public_id, resource_type="image")
+        if result.get("result") == "ok":
+            return {"success": True}
+            
+        # ប្រសិនបើមិនជោគជ័យ សាកល្បងលុបជាទម្រង់ raw
+        result_raw = destroy(public_id, resource_type="raw")
+        if result_raw.get("result") == "ok":
+            return {"success": True}
+            
+        return {"success": False, "message": result.get("result", "Unknown error")}
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e)
+        }

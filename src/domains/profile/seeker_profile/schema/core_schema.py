@@ -77,6 +77,8 @@ class SeekerProfileResponse(BaseModel):
     skills: List[str] = []
 
     resume_url: Optional[str] = None
+    resume_filename: Optional[str] = None 
+    resume_public_id: Optional[str] = None 
     portfolio_url: Optional[str] = None
     linkedin_url: Optional[str] = None
     

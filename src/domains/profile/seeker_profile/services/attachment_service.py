@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from src.core.mongo import seeker_profiles_collection
 from src.domains.profile.seeker_profile.services.ai_service import analyze_cv_with_gemini
-from src.utils.cloudinary import upload_document, upload_image
+from src.utils.cloudinary import upload_document, upload_image, delete_document
 from src.domains.profile.seeker_profile.services.core_profile_service import helper_format_profile, calculate_completion_percentage
 from src.utils.pdf_extractor import extract_text_from_pdf
 
@@ -78,6 +78,7 @@ async def process_and_extract_cv(user_id: str, file: UploadFile) -> dict:
     ដំណើរការ៖ ឆែកឯកសារ ➔ អានអត្ថបទ ➔ ឱ្យ AI វិភាគ ➔ Upload បើពិតជា CV ➔ បោះ JSON ឱ្យ Frontend (មិន Save ទេ)
     """
     user_oid = ObjectId(user_id)
+    original_filename = file.filename
     
     # ១. ត្រួតពិនិត្យប្រភេទ និងទំហំឯកសារ
     if file.content_type != "application/pdf":
@@ -98,27 +99,36 @@ async def process_and_extract_cv(user_id: str, file: UploadFile) -> dict:
     # ៣. ឱ្យ Gemini វិភាគ និងទាញយកទិន្នន័យ
     ai_result = await analyze_cv_with_gemini(extracted_text)
 
-    # ៤. ការសម្រេចចិត្ត (Decision)
     if not ai_result.get("is_cv", False):
         reason = ai_result.get("reason", "The uploaded file is not a valid CV.")
         raise HTTPException(status_code=400, detail=f"The file has been rejected: {reason}")
 
-    # ៥. Upload ឯកសារពិតទៅ Cloudinary ព្រោះ AI បញ្ជាក់ថាវាជា CV មែន
-    upload_res = upload_document(file.file, folder="jobber_city/resumes")
-    if not upload_res.get("success"):
-        raise HTTPException(status_code=500, detail=f"Failed to Upload CV: {upload_res.get('message')}")
-
-    resume_url = upload_res.get("url")
-
-    # ៦. ធ្វើការរក្សាទុកតែ resume_url ប៉ុណ្ណោះ
+    # ទាញយក Profile មកពិនិត្យសិន
     profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
     if not profile:
         raise HTTPException(status_code=404, detail="Please update your profile information first.")
 
+    # 🎯 ២. ត្រួតពិនិត្យ និងលុប CV ចាស់ចេញពី Cloudinary (បើមាន)
+    old_public_id = profile.get("resume_public_id")
+    if old_public_id:
+        delete_document(old_public_id)
+
+    # Upload ឯកសារពិតទៅ Cloudinary ព្រោះ AI បញ្ជាក់ថាវាជា CV មែន
+    upload_res = upload_document(file.file, folder="jobber_city/resumes")
+    if not upload_res.get("success"):
+        raise HTTPException(status_code=500, detail=f"Failed to Upload CV: {upload_res.get('message')}")
+
+    # 🎯 ៣. ចាប់យកទាំង URL និង Public ID ពី Cloudinary
+    resume_url = upload_res.get("url")
+    resume_public_id = upload_res.get("public_id") 
+
+    # ៤. ធ្វើការរក្សាទុក URL, ឈ្មោះដើម និង Public ID ចូល Database
     updated_profile = await seeker_profiles_collection.find_one_and_update(
         {"user_id": user_oid},
         {"$set": {
             "resume_url": resume_url,
+            "resume_filename": original_filename, # 🎯 រក្សាទុកឈ្មោះដើម
+            "resume_public_id": resume_public_id, # 🎯 រក្សាទុក ID សម្រាប់លុបថ្ងៃក្រោយ
             "updated_at": datetime.now(timezone.utc)
         }},
         return_document=True
@@ -131,45 +141,44 @@ async def process_and_extract_cv(user_id: str, file: UploadFile) -> dict:
         {"$set": {"profile_completion_percentage": final_percentage}}
     )
 
-    # ៧. រៀបចំទិន្នន័យសម្រាប់បោះទៅ Frontend
+    # រៀបចំទិន្នន័យសម្រាប់បោះទៅ Frontend
     extracted_data = ai_result.get("extracted_data", {})
-    
-    # 💡 Logic ថ្មី៖ លុប personal_info ចេញ បើគាត់ធ្លាប់មានលេខទូរស័ព្ទ ឬ អ៊ីមែលរួចហើយក្នុង DB
-    # (យើងសន្មតថាបើរូបគាត់មាន phone ឬ email មានន័យថាគាត់បំពេញ Profile រួចហើយ)
     if profile.get("phone_number") or profile.get("email"):
         extracted_data.pop("personal_info", None)
 
     return {
         "resume_url": resume_url,
-        "parsed_data": extracted_data # បោះទិន្នន័យនេះទៅឱ្យ Frontend ប្រើ
+        "resume_filename": original_filename, # 🎯 បោះឈ្មោះត្រឡប់ទៅ UI វិញ
+        "parsed_data": extracted_data
     }
     
 async def delete_cv(user_id: str) -> dict:
-    """
-    មុខងារសម្រាប់លុបឯកសារ CV (កំណត់ resume_url ឱ្យទៅជាទទេ) និងគណនាភាគរយ Profile ឡើងវិញ
-    """
     user_oid = ObjectId(user_id)
     
-    # ១. ស្វែងរក Profile ក្នុង Database[cite: 9]
     profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found.")
         
-    # ប្រសិនបើគាត់គ្មាន CV ស្រាប់ទេ យើងបោះ Error ប្រាប់[cite: 9]
     if not profile.get("resume_url"):
         raise HTTPException(status_code=400, detail="No resume found to delete.")
 
-    # ២. Update resume_url ទៅជា string ទទេ ("")[cite: 9]
+    # 🎯 លុបឯកសារចេញពី Cloudinary ដោយប្រើ public_id
+    old_public_id = profile.get("resume_public_id")
+    if old_public_id:
+        delete_document(old_public_id)
+
+    # Update ក្នុង Database ឱ្យទៅជាទទេរទាំងអស់
     updated_profile = await seeker_profiles_collection.find_one_and_update(
         {"user_id": user_oid},
         {"$set": {
             "resume_url": "",
+            "resume_filename": "", # 🎯 Clear ចោល
+            "resume_public_id": "", # 🎯 Clear ចោល
             "updated_at": datetime.now(timezone.utc)
         }},
         return_document=True
     )
 
-    # ៣. គណនាភាគរយ Profile សាជាថ្មី ព្រោះបានបាត់បង់ពិន្ទុ CV[cite: 9]
     final_percentage = calculate_completion_percentage(updated_profile)
     updated_profile = await seeker_profiles_collection.find_one_and_update(
         {"user_id": user_oid},
@@ -177,5 +186,4 @@ async def delete_cv(user_id: str) -> dict:
         return_document=True
     )
 
-    # ៤. បញ្ជូនទិន្នន័យ Profile ត្រឡប់ទៅវិញតាមទម្រង់ស្តង់ដារ[cite: 9]
     return helper_format_profile(updated_profile)
