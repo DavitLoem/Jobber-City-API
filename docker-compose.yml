@@ -1,0 +1,32 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: jobber_city_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    # No auth for local dev simplicity. If you want to mirror production auth,
+    # uncomment below and add matching credentials to your MONGO_URL.
+    # environment:
+    #   MONGO_INITDB_ROOT_USERNAME: admin
+    #   MONGO_INITDB_ROOT_PASSWORD: changeme
+
+  # Optional web UI (same idea as Railway's "Database" tab) to browse
+  # collections/documents without opening a mongosh shell.
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: jobber_city_mongo_ui
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_BASICAUTH: "false"
+
+volumes:
+  mongo_data:
+    driver: local

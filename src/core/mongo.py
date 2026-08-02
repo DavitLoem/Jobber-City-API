@@ -49,3 +49,8 @@ industries_collection = collections("industries")
 job_posts_collection = collections("job_posts")
 job_applications_collection = collections("job_applications")
 
+# Real-time Chat (Seeker <-> Employer)
+conversations_collection = collections("conversations")
+chat_messages_collection = collections("chat_messages")
+device_tokens_collection = collections("device_tokens")
+
