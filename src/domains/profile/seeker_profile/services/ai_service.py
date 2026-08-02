@@ -101,7 +101,7 @@ async def analyze_cv_with_gemini(cv_text: str, max_retries: int = 3) -> dict:
                     logging.error(f"Gemini API Error after {max_retries} attempts: {e}")
                     raise HTTPException(
                         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail="ប្រព័ន្ធ AI របស់យើងកំពុងមានអ្នកប្រើប្រាស់ច្រើន។ សូមមេត្តារង់ចាំបន្តិច រួចព្យាយាមម្តងទៀត។"
+                        detail="The AI system is currently overloaded. Please try again later."
                     )
             else:
                 # បើជា Error ផ្សេង (មិនមែន 503) គឺបោះចេញតែម្តង

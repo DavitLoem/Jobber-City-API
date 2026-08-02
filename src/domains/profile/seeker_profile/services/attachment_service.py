@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 from fastapi import UploadFile, HTTPException, status
@@ -79,78 +80,86 @@ async def process_and_extract_cv(user_id: str, file: UploadFile) -> dict:
     """
     user_oid = ObjectId(user_id)
     original_filename = file.filename
-    
-    # ១. ត្រួតពិនិត្យប្រភេទ និងទំហំឯកសារ
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
 
-    file.file.seek(0, 2)
-    file_size = file.file.tell()
-    file.file.seek(0)
-    
-    if file_size > 5 * 1024 * 1024: 
-        raise HTTPException(status_code=413, detail="File too large! Please upload a file smaller than 5MB.")
+    # 🎯 ២. ដាក់ try...except ក្តោបពីលើដំណើរការទាំងមូល
+    try:
+        # ១. ត្រួតពិនិត្យប្រភេទ និងទំហំឯកសារ
+        if file.content_type != "application/pdf":
+            raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
 
-    # ២. ទាញយកអត្ថបទពី PDF
-    extracted_text = await extract_text_from_pdf(file)
-    if not extracted_text:
-        raise HTTPException(status_code=400, detail="Cannot extract text from the uploaded PDF. Please ensure it's a valid CV.")
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file.file.seek(0)
+        
+        if file_size > 5 * 1024 * 1024: 
+            raise HTTPException(status_code=413, detail="File too large! Please upload a file smaller than 5MB.")
 
-    # ៣. ឱ្យ Gemini វិភាគ និងទាញយកទិន្នន័យ
-    ai_result = await analyze_cv_with_gemini(extracted_text)
+        # ២. ទាញយកអត្ថបទពី PDF
+        extracted_text = await extract_text_from_pdf(file)
+        if not extracted_text:
+            raise HTTPException(status_code=400, detail="Cannot extract text from the uploaded PDF. Please ensure it's a valid CV.")
 
-    if not ai_result.get("is_cv", False):
-        reason = ai_result.get("reason", "The uploaded file is not a valid CV.")
-        raise HTTPException(status_code=400, detail=f"The file has been rejected: {reason}")
+        # ៣. ឱ្យ Gemini វិភាគ និងទាញយកទិន្នន័យ (ដំណើរការនេះអាចស៊ីពេលយូរ)
+        ai_result = await analyze_cv_with_gemini(extracted_text)
 
-    # ទាញយក Profile មកពិនិត្យសិន
-    profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
-    if not profile:
-        raise HTTPException(status_code=404, detail="Please update your profile information first.")
+        if not ai_result.get("is_cv", False):
+            reason = ai_result.get("reason", "The uploaded file is not a valid CV.")
+            raise HTTPException(status_code=400, detail=f"The file has been rejected: {reason}")
 
-    # 🎯 ២. ត្រួតពិនិត្យ និងលុប CV ចាស់ចេញពី Cloudinary (បើមាន)
-    old_public_id = profile.get("resume_public_id")
-    if old_public_id:
-        delete_document(old_public_id)
+        # ទាញយក Profile មកពិនិត្យសិន
+        profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
+        if not profile:
+            raise HTTPException(status_code=404, detail="Please update your profile information first.")
 
-    # Upload ឯកសារពិតទៅ Cloudinary ព្រោះ AI បញ្ជាក់ថាវាជា CV មែន
-    upload_res = upload_document(file.file, folder="jobber_city/resumes")
-    if not upload_res.get("success"):
-        raise HTTPException(status_code=500, detail=f"Failed to Upload CV: {upload_res.get('message')}")
+        # ៤. ត្រួតពិនិត្យ និងលុប CV ចាស់ចេញពី Cloudinary (បើមាន)
+        old_public_id = profile.get("resume_public_id")
+        if old_public_id:
+            delete_document(old_public_id)
 
-    # 🎯 ៣. ចាប់យកទាំង URL និង Public ID ពី Cloudinary
-    resume_url = upload_res.get("url")
-    resume_public_id = upload_res.get("public_id") 
+        # ៥. Upload ឯកសារពិតទៅ Cloudinary ព្រោះ AI បញ្ជាក់ថាវាជា CV មែន
+        upload_res = upload_document(file.file, folder="jobber_city/resumes")
+        if not upload_res.get("success"):
+            raise HTTPException(status_code=500, detail=f"Failed to Upload CV: {upload_res.get('message')}")
 
-    # ៤. ធ្វើការរក្សាទុក URL, ឈ្មោះដើម និង Public ID ចូល Database
-    updated_profile = await seeker_profiles_collection.find_one_and_update(
-        {"user_id": user_oid},
-        {"$set": {
+        # ៦. ចាប់យកទាំង URL និង Public ID ពី Cloudinary
+        resume_url = upload_res.get("url")
+        resume_public_id = upload_res.get("public_id") 
+
+        # ៧. ធ្វើការរក្សាទុក URL, ឈ្មោះដើម និង Public ID ចូល Database
+        updated_profile = await seeker_profiles_collection.find_one_and_update(
+            {"user_id": user_oid},
+            {"$set": {
+                "resume_url": resume_url,
+                "resume_filename": original_filename,
+                "resume_public_id": resume_public_id,
+                "updated_at": datetime.now(timezone.utc)
+            }},
+            return_document=True
+        )
+        
+        # គណនាភាគរយ Profile សាជាថ្មី
+        final_percentage = calculate_completion_percentage(updated_profile)
+        await seeker_profiles_collection.update_one(
+            {"user_id": user_oid},
+            {"$set": {"profile_completion_percentage": final_percentage}}
+        )
+
+        # រៀបចំទិន្នន័យសម្រាប់បោះទៅ Frontend
+        extracted_data = ai_result.get("extracted_data", {})
+        if profile.get("phone_number") or profile.get("email"):
+            extracted_data.pop("personal_info", None)
+
+        return {
             "resume_url": resume_url,
-            "resume_filename": original_filename, # 🎯 រក្សាទុកឈ្មោះដើម
-            "resume_public_id": resume_public_id, # 🎯 រក្សាទុក ID សម្រាប់លុបថ្ងៃក្រោយ
-            "updated_at": datetime.now(timezone.utc)
-        }},
-        return_document=True
-    )
-    
-    # គណនាភាគរយ Profile សាជាថ្មី ព្រោះមានការ Update resume_url
-    final_percentage = calculate_completion_percentage(updated_profile)
-    await seeker_profiles_collection.update_one(
-        {"user_id": user_oid},
-        {"$set": {"profile_completion_percentage": final_percentage}}
-    )
+            "resume_filename": original_filename,
+            "parsed_data": extracted_data
+        }
 
-    # រៀបចំទិន្នន័យសម្រាប់បោះទៅ Frontend
-    extracted_data = ai_result.get("extracted_data", {})
-    if profile.get("phone_number") or profile.get("email"):
-        extracted_data.pop("personal_info", None)
-
-    return {
-        "resume_url": resume_url,
-        "resume_filename": original_filename, # 🎯 បោះឈ្មោះត្រឡប់ទៅ UI វិញ
-        "parsed_data": extracted_data
-    }
+    # 🎯 ៣. ចាប់យក Event ពេល Client ផ្តាច់ Connection (ចុច Cancel)
+    except asyncio.CancelledError:
+        print(f"⚠️ [Cancel] Process CV was cancelled by user {user_id}. Stopping execution.")
+        # បោះ Error បន្តដើម្បីឱ្យ FastAPI (Uvicorn) បិទ Task នេះដោយស្របច្បាប់ និងមិនបញ្ចេញ Error 500
+        raise
     
 async def delete_cv(user_id: str) -> dict:
     user_oid = ObjectId(user_id)
