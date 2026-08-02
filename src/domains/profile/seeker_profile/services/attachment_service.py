@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from src.core.mongo import seeker_profiles_collection
 from src.domains.profile.seeker_profile.services.ai_service import analyze_cv_with_gemini
 from src.utils.cloudinary import upload_document, upload_image, delete_document
-from src.domains.profile.seeker_profile.services.core_profile_service import helper_format_profile, calculate_completion_percentage
+from src.domains.profile.seeker_profile.services.core_profile_service import get_seeker_profile, helper_format_profile, calculate_completion_percentage
 from src.utils.pdf_extractor import extract_text_from_pdf
 
 async def upload_profile_image(user_id: str, file: UploadFile) -> dict:
@@ -186,4 +186,4 @@ async def delete_cv(user_id: str) -> dict:
         return_document=True
     )
 
-    return helper_format_profile(updated_profile)
+    return await get_seeker_profile(user_id)

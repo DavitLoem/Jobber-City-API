@@ -18,8 +18,8 @@ def upload_document(file, folder="jobber_city/resumes"):
         result = upload(
             file,
             folder=folder,
-            resource_type="auto", # auto អនុញ្ញាតឱ្យ Cloudinary ស្គាល់ PDF ដោយស្វ័យប្រវត្តិ
-            allowed_formats=["pdf", "doc", "docx"]
+            resource_type="raw", 
+            # allowed_formats=["pdf", "doc", "docx"]
         )
         return {
             "success": True,
