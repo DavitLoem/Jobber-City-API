@@ -5,8 +5,6 @@ class JobFeedService:
     
     def _format_feed_response(self, job_doc: dict) -> dict:
         """បំប្លែងទិន្នន័យដែលបាន Join រួច ទៅជាទម្រង់ JobFeedResponse"""
-        
-        # រៀបចំទីតាំង (ឧ. រុស្សីកែវ, ភ្នំពេញ) 
         district_name = job_doc.get("district", {}).get("name_en", "")
         province_name = job_doc.get("province", {}).get("name_en", "")
         
@@ -17,16 +15,12 @@ class JobFeedService:
         else:
             location = "Unknown Location"
             
-        match_score = job_doc.get("match_percentage", 0) 
-            
         return {
             "id": str(job_doc["_id"]), 
             "title": job_doc.get("title", ""), 
             "min_salary": job_doc.get("min_salary", 0), 
             "max_salary": job_doc.get("max_salary", 0), 
             "salary_period": job_doc.get("salary_period", ""), 
-            
-            # 🎯 បន្ថែមទិន្នន័យ Detail ត្រង់នេះ (ទាញចេញពី Database)
             "description": job_doc.get("description", []),
             "requirements": job_doc.get("requirements", []),
             "benefits": job_doc.get("benefits", []),
@@ -36,7 +30,6 @@ class JobFeedService:
             "is_negotiable": job_doc.get("is_negotiable", True),
             "headcount": job_doc.get("headcount", 1),
             "closing_date": job_doc.get("closing_date"),
-            
             "company_name": job_doc.get("company", {}).get("company_name", "Unknown Company"), 
             "logo_url": job_doc.get("company", {}).get("logo_url"), 
             "location": location, 
@@ -45,153 +38,120 @@ class JobFeedService:
             "created_at": job_doc.get("created_at"), 
             "is_saved": False, 
             "is_applied": job_doc.get("is_applied", False),
-            "match_percentage": int(match_score) 
+            "match_percentage": int(job_doc.get("match_percentage", 0))
         }
 
-    async def get_jobs(self, user_id: str, feed_type: str = "recent", page: int = 1, limit: int = 10, category_id: str = None) -> list:
-        """ទាញយកការងារចុងក្រោយបំផុត (Recent Jobs) ជាមួយមុខងារ Pagination"""
-    
-        skip = (page - 1) * limit
-        user_oid = ObjectId(user_id)
-        
-        seeker_profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
-        seeker_skills = seeker_profile.get("skills", []) if seeker_profile else []
+    # 🎯 ១. Function គណនាទម្ងន់ពិន្ទុ
+    def _get_dynamic_weights(self, seeker_skills: list) -> dict:
+        """កំណត់ទម្ងន់ពិន្ទុផ្អែកលើការបំពេញ Profile របស់អ្នកប្រើប្រាស់"""
+        if not seeker_skills:
+            return {"category": 60, "province": 20, "district": 20, "skill": 0}
+        return {"category": 30, "province": 10, "district": 10, "skill": 50}
+
+    # 🎯 ២. Function រៀបចំលក្ខខណ្ឌ (Filter & Sort)
+    def _build_query_conditions(self, feed_type: str, category_id: str, seeker_profile: dict) -> tuple:
+        """បង្កើតលក្ខខណ្ឌ $match និង $sort ទៅតាមប្រភេទ Feed"""
         seeker_categories = seeker_profile.get("expertise_category_ids", []) if seeker_profile else []
+        seeker_province = seeker_profile.get("province_id") if seeker_profile else None
         
         if feed_type == "recommended":
             sort_stage = {"$sort": {"match_percentage": -1, "created_at": -1}}
-        else: # លំនាំដើមគឺ "recent"
-            sort_stage = {"$sort": {"created_at": -1}}
+            or_conditions = []
+            if seeker_categories:
+                or_conditions.append({"category_id": {"$in": seeker_categories}})
+            if seeker_province:
+                or_conditions.append({"province_id": ObjectId(seeker_province) if ObjectId.is_valid(seeker_province) else seeker_province})
             
-        match_condition = {"status": "active"}
-        if category_id and ObjectId.is_valid(category_id):
-            match_condition["category_id"] = ObjectId(category_id)
-        
+            match_condition = {"status": "active", "$or": or_conditions} if or_conditions else {"status": "active"}
+        else: # recent
+            sort_stage = {"$sort": {"created_at": -1}}
+            match_condition = {"status": "active"}
+            if category_id and ObjectId.is_valid(category_id):
+                match_condition["category_id"] = ObjectId(category_id)
+                
+        return match_condition, sort_stage
+
+    # 🎯 ៣. Function បង្កើត Aggregation Pipeline ទាំងមូល
+    def _build_pipeline(self, user_oid: ObjectId, skip: int, limit: int, match_condition: dict, sort_stage: dict, seeker_profile: dict, weights: dict) -> list:
+        """ផ្គុំ Pipeline សម្រាប់បញ្ជូនទៅកាន់ MongoDB"""
+        seeker_skills = seeker_profile.get("skills", []) if seeker_profile else []
+        seeker_categories = seeker_profile.get("expertise_category_ids", []) if seeker_profile else []
+        seeker_province = seeker_profile.get("province_id") if seeker_profile else None
+        seeker_district = seeker_profile.get("district_id") if seeker_profile else None
+
         pipeline = [
-            # ១. ជ្រើសរើសយកតែការងារណាដែលកំពុង Active
             {"$match": match_condition},
             
-            # 💡 --- THE MATCHING ENGINE --- 💡
-            # ក. រកចំនួន Skills ដែលជាន់គ្នា និងឆែកមើល Category
+            # --- THE MATCHING ENGINE ---
             {"$addFields": {
-                "matched_skills_count": {
-                    "$size": { "$setIntersection": [ {"$ifNull": ["$required_skills", []]}, seeker_skills ] }
-                },
-                "total_skills_count": {
-                    "$size": { "$ifNull": ["$required_skills", []] }
-                },
-                "is_category_match": {
-                    "$in": ["$category_id", seeker_categories]
-                }
+                "matched_skills_count": {"$size": { "$setIntersection": [ {"$ifNull": ["$required_skills", []]}, seeker_skills ] }},
+                "total_skills_count": {"$size": { "$ifNull": ["$required_skills", []] }},
+                "is_category_match": {"$in": ["$category_id", seeker_categories]},
+                "is_province_match": {"$eq": ["$province_id", ObjectId(seeker_province) if seeker_province and ObjectId.is_valid(seeker_province) else None]},
+                "is_district_match": {"$eq": ["$district_id", ObjectId(seeker_district) if seeker_district and ObjectId.is_valid(seeker_district) else None]}
             }},
-            
-            # ខ. គណនាពិន្ទុ (Category 30 + Skill 70)
             {"$addFields": {
-                "skill_score": {
-                    "$cond": [
-                        {"$gt": ["$total_skills_count", 0]}, # បើក្រុមហ៊ុនមានដាក់ទាមទារ Skill
-                        {"$multiply": [{"$divide": ["$matched_skills_count", "$total_skills_count"]}, 70]}, # (ជាន់គ្នា/សរុប) * 70
-                        0 # បើក្រុមហ៊ុនអត់ទាមទារ Skill អីសោះ បាន 0 ពិន្ទុ (ឬអាចកែតាមចង់បាន)
-                    ]
-                },
-                "category_score": {
-                    "$cond": ["$is_category_match", 30, 0] # បើត្រូវ Category បាន 30 បើមិនត្រូវ បាន 0
-                }
+                "skill_score": {"$cond": [{"$gt": ["$total_skills_count", 0]}, {"$multiply": [{"$divide": ["$matched_skills_count", "$total_skills_count"]}, weights["skill"]]}, 0]},
+                "category_score": {"$cond": ["$is_category_match", weights["category"], 0]},
+                "location_score": {"$add": [
+                    {"$cond": ["$is_province_match", weights["province"], 0]},
+                    {"$cond": ["$is_district_match", weights["district"], 0]}
+                ]}
             }},
+            {"$addFields": {"match_percentage": {"$round": [{"$add": ["$skill_score", "$category_score", "$location_score"]}, 0]}}},
             
-            # គ. បូកពិន្ទុបញ្ចូលគ្នា និងធ្វើឱ្យទៅជាចំនួនគត់ (Round)
-            {"$addFields": {
-                "match_percentage": {"$round": [{"$add": ["$skill_score", "$category_score"]}, 0]}
-            }},
-            
-            # ២. រៀបតាមការប្រកាសថ្មីបំផុត
             sort_stage,
-            
-            # ៣. កំណត់ទំព័រ (Pagination)
             {"$skip": skip},
             {"$limit": limit},
             
-            # ៤. តភ្ជាប់ជាមួយ Profile ក្រុមហ៊ុន
-            {
-                "$lookup": {
-                    "from": company_profiles_collection.name,
-                    "localField": "company_id",
-                    "foreignField": "_id",
-                    "as": "company"
-                }
-            },
+            # --- THE LOOKUPS ---
+            {"$lookup": {"from": company_profiles_collection.name, "localField": "company_id", "foreignField": "_id", "as": "company"}},
             {"$unwind": {"path": "$company", "preserveNullAndEmptyArrays": True}},
             
-            # ៥. តភ្ជាប់ជាមួយខេត្ត/ក្រុង
-            {
-                "$lookup": {
-                    "from": provinces_collection.name,
-                    "localField": "province_id",
-                    "foreignField": "_id",
-                    "as": "province"
-                }
-            },
+            {"$lookup": {"from": provinces_collection.name, "localField": "province_id", "foreignField": "_id", "as": "province"}},
             {"$unwind": {"path": "$province", "preserveNullAndEmptyArrays": True}},
             
-            # ៦. តភ្ជាប់ជាមួយស្រុក/ខណ្ឌ
-            {
-                "$lookup": {
-                    "from": districts_collection.name,
-                    "localField": "district_id",
-                    "foreignField": "_id",
-                    "as": "district"
-                }
-            },
+            {"$lookup": {"from": districts_collection.name, "localField": "district_id", "foreignField": "_id", "as": "district"}},
             {"$unwind": {"path": "$district", "preserveNullAndEmptyArrays": True}},
             
-            # ៧. តភ្ជាប់ជាមួយ Employment Type (Full Time, Part Time...)
-            {
-                "$lookup": {
-                    "from": employment_types_collection.name,
-                    "localField": "employment_type_id",
-                    "foreignField": "_id",
-                    "as": "employment_type"
-                }
-            },
+            {"$lookup": {"from": employment_types_collection.name, "localField": "employment_type_id", "foreignField": "_id", "as": "employment_type"}},
             {"$unwind": {"path": "$employment_type", "preserveNullAndEmptyArrays": True}},
             
-            # ៨. តភ្ជាប់ជាមួយ Work Type (Remote, On-site...)
-            {
-                "$lookup": {
-                    "from": work_types_collection.name,
-                    "localField": "work_type_id",
-                    "foreignField": "_id",
-                    "as": "work_type"
-                }
-            },
+            {"$lookup": {"from": work_types_collection.name, "localField": "work_type_id", "foreignField": "_id", "as": "work_type"}},
             {"$unwind": {"path": "$work_type", "preserveNullAndEmptyArrays": True}},
-            # 9. តភ្ជាប់ជាមួយ Job Applications
-            {
-                "$lookup": {
-                    "from": job_applications_collection.name,
-                    "let": {"jobId": "$_id", "seekerId": user_oid},
-                    "pipeline": [
-                        {"$match": {
-                            "$expr": {
-                                "$and": [
-                                    {"$eq": ["$job_id", "$$jobId"]},
-                                    {"$eq": ["$seeker_user_id", "$$seekerId"]}
-                                ]
-                            }
-                        }}
-                    ],
-                    "as": "user_application"
-                }
-            },
-            {"$addFields": {
-                "is_applied": {"$gt": [{"$size": "$user_application"}, 0]}
-            }}
+            
+            {"$lookup": {
+                "from": job_applications_collection.name,
+                "let": {"jobId": "$_id", "seekerId": user_oid},
+                "pipeline": [{"$match": {"$expr": {"$and": [{"$eq": ["$job_id", "$$jobId"]}, {"$eq": ["$seeker_user_id", "$$seekerId"]}]}}}],
+                "as": "user_application"
+            }},
+            {"$addFields": {"is_applied": {"$gt": [{"$size": "$user_application"}, 0]}}}
         ]
+        return pipeline
 
-        # បញ្ជាឱ្យ MongoDB ដំណើរការ Pipeline
+    # 🚀 Main Function ឥឡូវនេះខ្លី និងងាយស្រួលយល់
+    async def get_jobs(self, user_id: str, feed_type: str = "recent", page: int = 1, limit: int = 10, category_id: str = None) -> list:
+        """ទាញយកការងារចុងក្រោយបំផុត (Recent Jobs) និងការងារណែនាំ (Recommended)"""
+        skip = (page - 1) * limit
+        user_oid = ObjectId(user_id)
+        
+        # ទាញយក Profile 
+        seeker_profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
+        seeker_skills = seeker_profile.get("skills", []) if seeker_profile else []
+        
+        # ១. ទាញយកការកំណត់ទម្ងន់ពិន្ទុ
+        weights = self._get_dynamic_weights(seeker_skills)
+        
+        # ២. ទាញយកលក្ខខណ្ឌ Filter និង Sort
+        match_condition, sort_stage = self._build_query_conditions(feed_type, category_id, seeker_profile)
+        
+        # ៣. ផ្គុំ Pipeline
+        pipeline = self._build_pipeline(user_oid, skip, limit, match_condition, sort_stage, seeker_profile, weights)
+
+        # ៤. បាញ់ទៅកាន់ Database និង Return លទ្ធផល
         cursor = job_posts_collection.aggregate(pipeline)
         
-        # បំប្លែងទិន្នន័យ (Format) ហើយបញ្ជូនត្រឡប់ទៅវិញ
         job_feeds = []
         async for job in cursor:
             job_feeds.append(self._format_feed_response(job))

@@ -10,7 +10,6 @@ require_seeker = RoleChecker(["seeker"])
 router = APIRouter(
     prefix="/api/seeker/profile/educations",
     tags=["Mobile - Seeker Educations"],
-    dependencies=[Depends(require_seeker)]
 )
 
 @router.post("/", response_model=APIResponse[dict])
@@ -20,13 +19,9 @@ async def add_education_route(payload: EducationRequest, current_user: dict = De
     return APIResponse(success=True, message="Education added successfully", data=result)
 
 @router.get("/{edu_id}", response_model=APIResponse[dict])
-async def get_education_by_id_route(
-    edu_id: str = Path(...),
-    current_user: dict = Depends(require_seeker)
-):
+async def get_education_by_id_route(edu_id: str = Path(...), current_user: dict = Depends(require_seeker)):
     user_id = current_user.get("id") or current_user.get("_id")
     result = await edu_service.get_education_by_id(str(user_id), edu_id)
-    
     return APIResponse(success=True, message="Education retrieved successfully", data=result)
 
 @router.put("/{edu_id}", response_model=APIResponse[dict])
