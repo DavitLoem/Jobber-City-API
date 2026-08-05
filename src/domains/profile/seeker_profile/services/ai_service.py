@@ -32,8 +32,8 @@ async def analyze_cv_with_gemini(cv_text: str, max_retries: int = 3) -> dict:
                 "last_name": "String or null",
                 "email": "String or null",
                 "phone_number": "String or null",
-                "biography": "String (Short summary of the candidate) or null"
             },
+            "biography": "String (Short summary of the candidate) or null",
             "skills": ["Skill 1", "Skill 2"],
             "languages": [
                 {
