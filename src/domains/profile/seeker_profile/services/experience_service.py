@@ -57,6 +57,20 @@ async def add_experience(user_id: str, data: ExperienceRequest) -> dict:
 
     return exp_dict
 
+async def get_experience_by_id(user_id: str, exp_id: str) -> dict:
+    """ទាញយកបទពិសោធន៍ការងារណាមួយតាមរយៈ ID"""
+    user_oid = ObjectId(user_id)
+    
+    # ប្រើ $elemMatch ក្នុង Projection ដើម្បីទាញយកតែ Object មួយដែលត្រូវនឹង exp_id
+    profile = await seeker_profiles_collection.find_one(
+        {"user_id": user_oid, "experiences.id": exp_id},
+        {"experiences": {"$elemMatch": {"id": exp_id}}}
+    )
+
+    if not profile or "experiences" not in profile or len(profile["experiences"]) == 0:
+        raise HTTPException(status_code=404, detail="Experience not found.")
+
+    return profile["experiences"][0]
 
 async def update_experience(user_id: str, exp_id: str, data: ExperienceRequest) -> dict:
     """កែប្រែបទពិសោធន៍ចាស់ (ប្រើ Positional Operator $)"""

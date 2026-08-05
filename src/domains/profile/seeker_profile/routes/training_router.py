@@ -17,6 +17,16 @@ async def add_training_route(payload: TrainingRequest, current_user: dict = Depe
     result = await train_service.add_training(str(user_id), payload)
     return APIResponse(success=True, message="Training added successfully", data=result)
 
+@router.get("/{train_id}", response_model=APIResponse[dict])
+async def get_training_by_id_route(
+    train_id: str = Path(...),
+    current_user: dict = Depends(require_seeker)
+):
+    user_id = current_user.get("id") or current_user.get("_id")
+    result = await train_service.get_training_by_id(str(user_id), train_id)
+    
+    return APIResponse(success=True, message="Training retrieved successfully", data=result)
+
 @router.put("/{train_id}", response_model=APIResponse[dict])
 async def update_training_route(
     payload: TrainingRequest,

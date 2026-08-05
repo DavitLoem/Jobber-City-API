@@ -31,6 +31,19 @@ async def add_language(user_id: str, data: LanguageRequest) -> dict:
     await _update_completion_percentage(user_oid)
     return lang_dict
 
+async def get_language_by_id(user_id: str, lang_id: str) -> dict:
+    user_oid = ObjectId(user_id)
+    
+    profile = await seeker_profiles_collection.find_one(
+        {"user_id": user_oid, "languages.id": lang_id},
+        {"languages": {"$elemMatch": {"id": lang_id}}}
+    )
+
+    if not profile or "languages" not in profile or len(profile["languages"]) == 0:
+        raise HTTPException(status_code=404, detail="Language not found.")
+
+    return profile["languages"][0]
+
 async def update_language(user_id: str, lang_id: str, data: LanguageRequest) -> dict:
     user_oid = ObjectId(user_id)
     lang_dict = data.model_dump(exclude_unset=True)
