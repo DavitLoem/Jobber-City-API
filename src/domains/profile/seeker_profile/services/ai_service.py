@@ -35,6 +35,12 @@ async def analyze_cv_with_gemini(cv_text: str, max_retries: int = 3) -> dict:
                 "biography": "String (Short summary of the candidate) or null"
             },
             "skills": ["Skill 1", "Skill 2"],
+            "languages": [
+                {
+                    "name": "String (e.g., English, Khmer, French)",
+                    "level": "String (e.g., Basic, Conversational, Fluent, Native) or null"
+                }
+            ],
             "experiences": [
                 {
                     "job_title": "String",
@@ -60,8 +66,9 @@ async def analyze_cv_with_gemini(cv_text: str, max_retries: int = 3) -> dict:
     Rules:
     1. Output MUST be valid JSON only without any markdown formatting.
     2. If is_cv is false, set "is_cv": false, provide the "reason" in Khmer, and "extracted_data" must be empty.
-    3. For dates: if only a year is mentioned (e.g., 2020), format as "2020-01-01". If it says "Present" or "Current", set end_date to null.
-    4. Ensure names and text formatting are clean and professional.
+    3. For dates: if only a year is mentioned (e.g., 2020), format as "2020-01-01". If it says "Present", "Current", or "Now", set end_date to null.
+    4. Biography Handling: Treat any section labeled 'Objective', 'Summary', 'Profile', 'About Me', or similar, as the 'biography'.
+    5. Language Handling: Extract languages. If proficiency level is unclear or presented visually, set 'level' to null or guess based on context.
     """
 
     for attempt in range(max_retries):
