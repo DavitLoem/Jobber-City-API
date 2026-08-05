@@ -157,3 +157,55 @@ class JobFeedService:
             job_feeds.append(self._format_feed_response(job))
             
         return job_feeds
+    
+    async def search_jobs(self, user_id: str, keyword: str, page: int = 1, limit: int = 10) -> list:
+        """ស្វែងរកការងារតាមរយៈពាក្យគន្លឹះ (Title, Skills ឬ Company Name)"""
+        skip = (page - 1) * limit
+        user_oid = ObjectId(user_id)
+        
+        # ១. ស្វែងរកក្រុមហ៊ុនដែលមានឈ្មោះពាក់ព័ន្ធនឹង Keyword ជាមុនសិន
+        # ដើម្បីយក ID របស់ពួកគេទៅឆែកជាមួយ Job Posts
+        matching_companies = await company_profiles_collection.find(
+            {"company_name": {"$regex": keyword, "$options": "i"}}, 
+            {"_id": 1}
+        ).to_list(None)
+        company_ids = [comp["_id"] for comp in matching_companies]
+
+        # ២. កំណត់លក្ខខណ្ឌស្វែងរក (Search Condition)
+        # $regex ជាមួយ option "i" មានន័យថា Case-insensitive (មិនប្រកាន់អក្សរតូចធំ)
+        match_condition = {
+            "status": "active",
+            "$or": [
+                {"title": {"$regex": keyword, "$options": "i"}},
+                {"required_skills": {"$regex": keyword, "$options": "i"}},
+                {"company_id": {"$in": company_ids}}
+            ]
+        }
+        
+        # តម្រៀបតាមការងារដែលទើបបង្ហោះថ្មីៗ
+        sort_stage = {"$sort": {"created_at": -1}}
+
+        # ៣. ទាញយក Profile របស់អ្នកប្រើប្រាស់ដើម្បីគណនា Match Percentage
+        seeker_profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
+        seeker_skills = seeker_profile.get("skills", []) if seeker_profile else []
+        weights = self._get_dynamic_weights(seeker_skills)
+
+        # ៤. ប្រើប្រាស់ Pipeline ដែលមានស្រាប់ដើម្បី Join និងគណនាពិន្ទុ
+        pipeline = self._build_pipeline(
+            user_oid=user_oid, 
+            skip=skip, 
+            limit=limit, 
+            match_condition=match_condition, 
+            sort_stage=sort_stage, 
+            seeker_profile=seeker_profile, 
+            weights=weights
+        )
+
+        # ៥. បាញ់ទៅកាន់ Database និង Return លទ្ធផល
+        cursor = job_posts_collection.aggregate(pipeline)
+        
+        search_results = []
+        async for job in cursor:
+            search_results.append(self._format_feed_response(job))
+            
+        return search_results

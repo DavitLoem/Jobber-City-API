@@ -47,3 +47,27 @@ async def get_recommended_jobs_route(
     user_id = str(current_user["_id"])
     result = await job_feed_service.get_jobs(user_id=user_id, feed_type="recommended", page=page, limit=limit)
     return APIResponse(success=True, message="Get recommended jobs", data=result)
+
+@router.get("/search", response_model=APIResponse[List[JobFeedResponse]])
+async def search_job_feeds(
+    keyword: str = Query(..., description="ពាក្យគន្លឹះសម្រាប់ស្វែងរក"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=50),
+    current_user: dict = Depends(get_current_user),
+    service: JobFeedService = Depends()
+):
+    """API សម្រាប់ស្វែងរកការងារតាមរយៈពាក្យគន្លឹះ (Title, Company, Skills)"""
+    user_id = current_user["user_id"]
+    
+    jobs = await service.search_jobs(
+        user_id=user_id,
+        keyword=keyword,
+        page=page,
+        limit=limit
+    )
+    
+    return APIResponse(
+        success=True,
+        message="Search results fetched successfully",
+        data=jobs
+    )
