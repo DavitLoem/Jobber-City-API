@@ -9,7 +9,11 @@ class JobApplicationModel:
         seeker_user_id: str | ObjectId,
         cover_letter: str = "",
         resume_url: str = None,
-        status: str = "pending"
+        status: str = "pending",
+        # 🟢 បន្ថែម Parameter ថ្មី
+        status_history: list = None,
+        interview_schedule: dict = None,
+        feedback: str = ""
     ):
         self.job_id = ObjectId(job_id) if isinstance(job_id, str) else job_id
         self.company_id = ObjectId(company_id) if isinstance(company_id, str) else company_id
@@ -18,6 +22,14 @@ class JobApplicationModel:
         self.cover_letter = cover_letter
         self.resume_url = resume_url
         self.status = status
+        
+        # 🟢 កំណត់តម្លៃ Default
+        now = datetime.now(timezone.utc)
+        self.status_history = status_history if status_history is not None else [
+            {"status": "pending", "date": now}
+        ]
+        self.interview_schedule = interview_schedule if interview_schedule is not None else {}
+        self.feedback = feedback
 
     def to_create_dict(self) -> dict:
         """វេចខ្ចប់ទិន្នន័យសម្រាប់ Insert ចូល Database លើកដំបូង"""

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional, Dict
 
 # ==========================================
 # 📍 REQUEST SCHEMAS (ទិន្នន័យដែល Frontend បញ្ជូនមក Backend)
@@ -40,3 +40,26 @@ class ApplicantResponse(BaseModel):
     cover_letter: Optional[str] = None
     status: str
     applied_at: datetime
+    
+class SeekerApplicationResponse(BaseModel):
+    """Schema សម្រាប់បោះព័ត៌មានលម្អិតនៃការដាក់ពាក្យ ទៅឱ្យ Seeker"""
+    application_id: str
+    job_id: str
+    company_id: str
+    
+    # ព័ត៌មានដែល Join ចេញពី Job Post និង Company
+    job_title: str
+    company_name: str
+    company_logo: Optional[str] = None
+    
+    # ព័ត៌មានពីការដាក់ពាក្យផ្ទាល់
+    resume_url: Optional[str] = None
+    cover_letter: Optional[str] = None
+    status: str
+    applied_at: datetime
+    updated_at: datetime
+    
+    # 🟢 Field ថ្មីសម្រាប់ Detail View
+    status_history: List[Dict] = []
+    interview_schedule: Optional[Dict] = None
+    feedback: Optional[str] = ""

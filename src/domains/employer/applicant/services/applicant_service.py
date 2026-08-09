@@ -96,32 +96,49 @@ class ApplicantService:
             
         return applicants
 
-    async def update_applicant_status(self, employer_user_id: str, application_id: str, new_status: str) -> dict:
+    async def update_applicant_status(self, employer_user_id: str, application_id: str, new_status: str, interview_schedule: dict = None, feedback: str = None) -> dict:
         """ផ្លាស់ប្តូរស្ថានភាពបេក្ខជន (ឧ. ហៅមកសម្ភាសន៍ ឬបដិសេធ)"""
         
         # កំណត់ Status ដែលអនុញ្ញាតឱ្យប្រើប្រាស់បាន
-        valid_statuses = ["pending", "reviewed", "shortlisted", "interview", "hired", "rejected"]
+        valid_statuses = ["pending", "reviewed", "shortlisted", "interview", "hired", "rejected"] 
         if new_status not in valid_statuses:
-             raise HTTPException(status_code=400, detail="Status is not valid.")
+             raise HTTPException(status_code=400, detail="Status is not valid.") 
 
-        company = await company_profiles_collection.find_one({"user_id": ObjectId(employer_user_id)})
+        company = await company_profiles_collection.find_one({"user_id": ObjectId(employer_user_id)}) 
         if not company:
-             raise HTTPException(status_code=403, detail="Permission Denied")
+             raise HTTPException(status_code=403, detail="Permission Denied") 
+             
+        now = datetime.now(timezone.utc)
+        
+        # 🟢 បង្កើត Data សម្រាប់ Update
+        update_data = {
+            "status": new_status, 
+            "updated_at": now
+        }
+        
+        # 🟢 បញ្ចូល Interview Schedule និង Feedback (ប្រសិនបើមាន)
+        if new_status == "interview" and interview_schedule:
+             update_data["interview_schedule"] = interview_schedule
+        if feedback:
+             update_data["feedback"] = feedback
 
-        # ធ្វើការ Update ដោយប្រាកដថា Application នោះ ដាក់មកកាន់ Company នេះមែន (ការពារ Employer ផ្សេងមកកែ)
+        # ធ្វើការ Update ដោយប្រាកដថា Application នោះ ដាក់មកកាន់ Company នេះមែន (ការពារ Employer ផ្សេងមកកែ) 
         updated_app = await job_applications_collection.find_one_and_update(
             {
                 "_id": ObjectId(application_id), 
-                "company_id": company["_id"]
+                "company_id": company["_id"] 
             },
-            {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc)}},
+            {
+                "$set": update_data,
+                "$push": {"status_history": {"status": new_status, "date": now}} # 🟢 Push ប្រវត្តិថ្មីចូល Array
+            },
             return_document=True
         )
 
         if not updated_app:
-            raise HTTPException(status_code=404, detail="Application not found or it does not belong to you.")
+            raise HTTPException(status_code=404, detail="Application not found or it does not belong to you.") 
 
-        return {"application_id": str(updated_app["_id"]), "new_status": new_status}
+        return {"application_id": str(updated_app["_id"]), "new_status": new_status} 
 
     async def get_seeker_profile_readonly(self, employer_user_id: str, seeker_user_id: str) -> dict:
         """Employer ចុចមើល Profile ពេញលេញរបស់ Seeker"""
