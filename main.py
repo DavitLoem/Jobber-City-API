@@ -121,6 +121,7 @@ from src.domains.employer.job_post.routes.job_post_router import router as job_p
 from src.domains.employer.applicant.routes.applicant_router import router as applicant_router
 from src.domains.seeker.job_feed.routes.job_feed_router import router as job_feed_router
 from src.domains.seeker.application.routes.seeker_application_router import router as seeker_application_router
+from src.domains.seeker.bookmark.routes.bookmark_router import router as bookmark_router
 
 
 # =========================
@@ -154,7 +155,7 @@ app.include_router(seeker_training_router)
 app.include_router(seeker_language_router)
 app.include_router(job_feed_router)
 app.include_router(seeker_application_router)
-
+app.include_router(bookmark_router)
 # Employer Routes (បន្ថែមនៅទីនេះពេលដែលបានបង្កើតរួចហើយ)
 app.include_router(company_profile_router)
 app.include_router(job_post_router)
