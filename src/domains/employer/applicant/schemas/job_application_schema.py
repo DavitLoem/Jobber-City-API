@@ -37,6 +37,7 @@ class ApplicantResponse(BaseModel):
     
     # ព័ត៌មានពីការដាក់ពាក្យផ្ទាល់
     resume_url: Optional[str] = None
+    resume_filename: Optional[str] = None
     cover_letter: Optional[str] = None
     status: str
     applied_at: datetime
@@ -54,6 +55,7 @@ class SeekerApplicationResponse(BaseModel):
     
     # ព័ត៌មានពីការដាក់ពាក្យផ្ទាល់
     resume_url: Optional[str] = None
+    resume_filename: Optional[str] = None
     cover_letter: Optional[str] = None
     status: str
     applied_at: datetime

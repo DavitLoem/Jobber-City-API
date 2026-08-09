@@ -59,6 +59,7 @@ class SeekerApplicationService:
             "seeker_user_id": seeker_oid,
             "cover_letter": payload.cover_letter or "",
             "resume_url": final_resume_url,
+
             "status": "pending",
             
             # 🟢 ថែម Field ថ្មីទាំង ៣ នេះដើម្បីកុំឱ្យ Error ពេលទាញមើល Detail

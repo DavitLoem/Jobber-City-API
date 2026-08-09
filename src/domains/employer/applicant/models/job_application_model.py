@@ -9,6 +9,7 @@ class JobApplicationModel:
         seeker_user_id: str | ObjectId,
         cover_letter: str = "",
         resume_url: str = None,
+        resume_filename: str = None,
         status: str = "pending",
         # 🟢 បន្ថែម Parameter ថ្មី
         status_history: list = None,

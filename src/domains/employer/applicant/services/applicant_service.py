@@ -89,6 +89,7 @@ class ApplicantService:
                 "skills": seeker.get("skills", []), 
                 "years_of_experience": seeker.get("years_of_experience", 0), 
                 "resume_url": app.get("resume_url"),
+                "resume_filename": app.get("resume_filename"),
                 "cover_letter": app.get("cover_letter"),
                 "status": app.get("status"),
                 "applied_at": app.get("applied_at")
