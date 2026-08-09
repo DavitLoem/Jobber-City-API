@@ -21,7 +21,7 @@ class SeekerApplicationService:
         job_oid = ObjectId(job_id)
         now = datetime.now(timezone.utc)
 
-        # 🛡️ លក្ខខណ្ឌទាំង ៤ រក្សាទុកដូចដើម
+        # 🛡️ លក្ខខណ្ឌ Check Limit រក្សាទុកដូចដើម
         twenty_four_hours_ago = now - timedelta(days=1)
         recent_applications_count = await job_applications_collection.count_documents({
             "seeker_user_id": seeker_oid,
@@ -39,9 +39,19 @@ class SeekerApplicationService:
         if not seeker_profile:
             raise HTTPException(status_code=403, detail="You must create a profile before you can apply for a job.")
 
+        # 🎯 ១. ទាញយក URL
         final_resume_url = payload.resume_url or seeker_profile.get("resume_url")
         if not final_resume_url:
             raise HTTPException(status_code=400, detail="CV/Resume is required! Please provide a CV link or upload one to your profile.")
+
+        # 🎯 ២. កំណត់ Logic សម្រាប់ទាញយកឈ្មោះឯកសារ (Filename)
+        final_resume_filename = ""
+        # ប្រសិនបើ Seeker ប្រើប្រាស់ CV ដែលមានក្នុង Profile ស្រាប់
+        if final_resume_url == seeker_profile.get("resume_url"):
+            final_resume_filename = seeker_profile.get("resume_filename", "Applicant_Resume.pdf")
+        else:
+            # ករណីគាត់បោះ Link CV ថ្មីពីខាងក្រៅមក (Custom URL)
+            final_resume_filename = "Attached_Resume.pdf"
 
         existing_app = await job_applications_collection.find_one({
             "job_id": job_oid, 
@@ -51,7 +61,7 @@ class SeekerApplicationService:
             raise HTTPException(status_code=400, detail="You have already applied for this job.")
 
         # ==========================================
-        # ✅ ការកែសម្រួល៖ បញ្ចូល Field ថ្មីៗសម្រាប់ Application Detail
+        # ✅ ការកែសម្រួលបញ្ចូលទិន្នន័យ
         # ==========================================
         application_data = {
             "job_id": job_oid,
@@ -59,14 +69,14 @@ class SeekerApplicationService:
             "seeker_user_id": seeker_oid,
             "cover_letter": payload.cover_letter or "",
             "resume_url": final_resume_url,
-
-            "status": "pending",
             
-            # 🟢 ថែម Field ថ្មីទាំង ៣ នេះដើម្បីកុំឱ្យ Error ពេលទាញមើល Detail
+            # 🟢 ប្រើអថេរដែលយើងបានរៀបចំ Logic រួចនៅខាងលើ
+            "resume_filename": final_resume_filename, 
+            
+            "status": "pending",
             "status_history": [{"status": "pending", "date": now}], 
             "interview_schedule": {}, 
             "feedback": "", 
-            
             "applied_at": now,
             "updated_at": now
         }
