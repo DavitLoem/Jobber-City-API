@@ -34,7 +34,7 @@ async def get_job_applicants_route(
         data=result
     )
     
-@router.get("/dropdown", response_model=APIResponse)
+@router.get("/applications/dropdown", response_model=APIResponse)
 async def get_job_filter_dropdown_route(
     current_user: dict = Depends(require_employer)
 ):
