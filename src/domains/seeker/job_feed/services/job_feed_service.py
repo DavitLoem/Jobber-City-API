@@ -158,39 +158,72 @@ class JobFeedService:
             
         return job_feeds
     
-    async def search_jobs(self, user_id: str, keyword: str, page: int = 1, limit: int = 10) -> list:
-        """ស្វែងរកការងារតាមរយៈពាក្យគន្លឹះ (Title, Skills ឬ Company Name)"""
+    async def search_jobs(
+        self, 
+        user_id: str, 
+        keyword: str = None, # 🎯 ប្តូរទៅជា Optional
+        page: int = 1, 
+        limit: int = 10,
+        category_id: str = None,
+        industry_id: str = None,
+        min_salary: float = None,
+        max_salary: float = None,
+        job_level_id: str = None,
+        employment_type_id: str = None,
+        province_id: str = None
+    ) -> list:
+        """ស្វែងរកការងារតាមរយៈពាក្យគន្លឹះ និង Filters ទាំង ៦"""
         skip = (page - 1) * limit
         user_oid = ObjectId(user_id)
         
-        # ១. ស្វែងរកក្រុមហ៊ុនដែលមានឈ្មោះពាក់ព័ន្ធនឹង Keyword ជាមុនសិន
-        # ដើម្បីយក ID របស់ពួកគេទៅឆែកជាមួយ Job Posts
-        matching_companies = await company_profiles_collection.find(
-            {"company_name": {"$regex": keyword, "$options": "i"}}, 
-            {"_id": 1}
-        ).to_list(None)
-        company_ids = [comp["_id"] for comp in matching_companies]
+        # 🎯 លក្ខខណ្ឌគោល (ត្រូវតែជាការងារដែល Active)
+        match_condition = {"status": "active"}
 
-        # ២. កំណត់លក្ខខណ្ឌស្វែងរក (Search Condition)
-        # $regex ជាមួយ option "i" មានន័យថា Case-insensitive (មិនប្រកាន់អក្សរតូចធំ)
-        match_condition = {
-            "status": "active",
-            "$or": [
+        # ១. ការស្វែងរកតាម Keyword (បើមាន)
+        if keyword and keyword.strip():
+            matching_companies = await company_profiles_collection.find(
+                {"company_name": {"$regex": keyword, "$options": "i"}}, 
+                {"_id": 1}
+            ).to_list(None)
+            company_ids = [comp["_id"] for comp in matching_companies]
+
+            match_condition["$or"] = [
                 {"title": {"$regex": keyword, "$options": "i"}},
                 {"required_skills": {"$regex": keyword, "$options": "i"}},
                 {"company_id": {"$in": company_ids}}
             ]
-        }
+
+        # ២. ការផ្គុំលក្ខខណ្ឌ Filter (Exact Matches)
+        if category_id and ObjectId.is_valid(category_id):
+            match_condition["category_id"] = ObjectId(category_id)
+            
+        if industry_id and ObjectId.is_valid(industry_id):
+            match_condition["industry_id"] = ObjectId(industry_id)
+            
+        if job_level_id and ObjectId.is_valid(job_level_id):
+            match_condition["job_level_id"] = ObjectId(job_level_id)
+            
+        if employment_type_id and ObjectId.is_valid(employment_type_id):
+            match_condition["employment_type_id"] = ObjectId(employment_type_id)
+            
+        if province_id and ObjectId.is_valid(province_id):
+            match_condition["province_id"] = ObjectId(province_id)
+
+        # ៣. ការគណនាប្រាក់ខែ (Salary Range Intersection)
+        # បើការងារផ្តល់ប្រាក់ខែចន្លោះ $400-$800 ហើយ User រក $500-$1000 នោះវាជាការងារដែលត្រូវគ្នា
+        if min_salary is not None:
+            match_condition["max_salary"] = {"$gte": float(min_salary)}
+        if max_salary is not None:
+            match_condition["min_salary"] = {"$lte": float(max_salary)}
         
-        # តម្រៀបតាមការងារដែលទើបបង្ហោះថ្មីៗ
         sort_stage = {"$sort": {"created_at": -1}}
 
-        # ៣. ទាញយក Profile របស់អ្នកប្រើប្រាស់ដើម្បីគណនា Match Percentage
+        # ទាញយក Profile ដើម្បីគណនាពិន្ទុអូសទាញ (Match Percentage) ដូចកូដចាស់[cite: 8]
         seeker_profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
         seeker_skills = seeker_profile.get("skills", []) if seeker_profile else []
         weights = self._get_dynamic_weights(seeker_skills)
 
-        # ៤. ប្រើប្រាស់ Pipeline ដែលមានស្រាប់ដើម្បី Join និងគណនាពិន្ទុ
+        # ប្រើ Pipeline ដដែលដោយបញ្ជូន match_condition ថ្មីនេះចូល[cite: 8]
         pipeline = self._build_pipeline(
             user_oid=user_oid, 
             skip=skip, 
@@ -201,11 +234,10 @@ class JobFeedService:
             weights=weights
         )
 
-        # ៥. បាញ់ទៅកាន់ Database និង Return លទ្ធផល
         cursor = job_posts_collection.aggregate(pipeline)
         
         search_results = []
         async for job in cursor:
-            search_results.append(self._format_feed_response(job))
+            search_results.append(self._format_feed_response(job)) #[cite: 8]
             
         return search_results
