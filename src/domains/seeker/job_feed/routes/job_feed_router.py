@@ -57,7 +57,7 @@ async def search_job_feeds(
     service: JobFeedService = Depends()
 ):
     """API សម្រាប់ស្វែងរកការងារតាមរយៈពាក្យគន្លឹះ (Title, Company, Skills)"""
-    user_id = current_user["user_id"]
+    user_id = str(current_user["_id"])
     
     jobs = await service.search_jobs(
         user_id=user_id,
