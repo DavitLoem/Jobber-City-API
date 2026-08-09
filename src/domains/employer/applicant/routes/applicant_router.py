@@ -33,6 +33,25 @@ async def get_job_applicants_route(
         message="Get applicants successfully", 
         data=result
     )
+    
+@router.get("/jobs/dropdown", response_model=APIResponse)
+async def get_job_filter_dropdown_route(
+    current_user: dict = Depends(require_employer)
+):
+    """
+    ទាញយកបញ្ជីការងាររបស់ក្រុមហ៊ុន សម្រាប់ប្រើប្រាស់ក្នុង Dropdown Filter លើទំព័រ Candidates
+    """
+    user_id = str(current_user["_id"])
+    
+    result = await applicant_service.get_employer_job_dropdown_list(
+        employer_user_id=user_id
+    )
+    
+    return APIResponse(
+        success=True, 
+        message="Job dropdown list fetched successfully", 
+        data=result
+    )
 
 @router.patch("/applications/{application_id}/status", response_model=APIResponse)
 async def update_application_status_route(

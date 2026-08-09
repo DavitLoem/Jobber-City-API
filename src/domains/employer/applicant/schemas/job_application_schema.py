@@ -63,3 +63,8 @@ class SeekerApplicationResponse(BaseModel):
     status_history: List[Dict] = []
     interview_schedule: Optional[Dict] = None
     feedback: Optional[str] = ""
+    
+class JobDropdownItemResponse(BaseModel):
+    job_id: str
+    display_name: str
+    status: str

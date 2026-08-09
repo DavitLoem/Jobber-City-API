@@ -95,6 +95,57 @@ class ApplicantService:
             })
             
         return applicants
+    
+    async def get_employer_job_dropdown_list(self, employer_user_id: str) -> list:
+        """
+        ទាញយកបញ្ជីការងាររបស់ Employer សម្រាប់បង្ហាញក្នុង Dropdown
+        ជាមួយនឹង Smart Labeling និងការតម្រៀប Status (Active មុន)
+        """
+        # ១. ផ្ទៀងផ្ទាត់ Employer Profile
+        employer_profile = await company_profiles_collection.find_one({"user_id": ObjectId(employer_user_id)})
+        if not employer_profile:
+            raise HTTPException(status_code=403, detail="Employer profile not found.")
+            
+        company_id = employer_profile["_id"]
+
+        # ២. ទាញយកការងារ ដោយយកតែ Field ចាំបាច់ ដើម្បីឱ្យលឿន
+        cursor = job_posts_collection.find(
+            {"company_id": company_id},
+            {"title": 1, "work_type": 1, "created_at": 1, "status": 1}
+        ).sort([
+            ("status", 1), # តម្រៀប 'active' មុន 'closed' 
+            ("created_at", -1) # ការងារថ្មីៗនៅខាងលើ
+        ])
+        
+        dropdown_jobs = []
+        async for job in cursor:
+            title = job.get("title", "Unknown Job")
+            work_type = job.get("work_type", "").capitalize()
+            created_at = job.get("created_at")
+            status = job.get("status", "active")
+            
+            # ៣. Smart Labeling Logic
+            # Format ថ្ងៃខែ ឧទាហរណ៍: Aug 2026
+            date_str = created_at.strftime("%b %Y") if created_at else ""
+            
+            # ផ្គុំឈ្មោះបញ្ជូលគ្នា
+            display_name = title
+            if work_type:
+                display_name += f" ({work_type})"
+            if date_str:
+                display_name += f" - {date_str}"
+                
+            # បន្ថែមសញ្ញាសម្គាល់បើការងារនោះបិទហើយ
+            if status != "active":
+                display_name += " [Closed]"
+
+            dropdown_jobs.append({
+                "job_id": str(job["_id"]),
+                "display_name": display_name,
+                "status": status
+            })
+            
+        return dropdown_jobs
 
     async def update_applicant_status(self, employer_user_id: str, application_id: str, new_status: str, interview_schedule: dict = None, feedback: str = None) -> dict:
         """ផ្លាស់ប្តូរស្ថានភាពបេក្ខជន (ឧ. ហៅមកសម្ភាសន៍ ឬបដិសេធ)"""
