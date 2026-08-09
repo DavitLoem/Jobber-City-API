@@ -1,9 +1,9 @@
 from bson import ObjectId
-from src.core.mongo import job_posts_collection, districts_collection, provinces_collection, company_profiles_collection, employment_types_collection, work_types_collection, seeker_profiles_collection, job_applications_collection
+from src.core.mongo import job_posts_collection, districts_collection, provinces_collection, company_profiles_collection, employment_types_collection, work_types_collection, seeker_profiles_collection, job_applications_collection, saved_jobs_collection
 
 class JobFeedService:
     
-    def _format_feed_response(self, job_doc: dict) -> dict:
+    def _format_feed_response(self, job_doc: dict, is_saved: bool = False) -> dict:
         """បំប្លែងទិន្នន័យដែលបាន Join រួច ទៅជាទម្រង់ JobFeedResponse"""
         district_name = job_doc.get("district", {}).get("name_en", "")
         province_name = job_doc.get("province", {}).get("name_en", "")
@@ -36,7 +36,7 @@ class JobFeedService:
             "employment_type": job_doc.get("employment_type", {}).get("name", "N/A"), 
             "work_type": job_doc.get("work_type", {}).get("name", "N/A"), 
             "created_at": job_doc.get("created_at"), 
-            "is_saved": False, 
+            "is_saved": is_saved, 
             "is_applied": job_doc.get("is_applied", False),
             "match_percentage": int(job_doc.get("match_percentage", 0))
         }
@@ -126,7 +126,15 @@ class JobFeedService:
                 "pipeline": [{"$match": {"$expr": {"$and": [{"$eq": ["$job_id", "$$jobId"]}, {"$eq": ["$seeker_user_id", "$$seekerId"]}]}}}],
                 "as": "user_application"
             }},
-            {"$addFields": {"is_applied": {"$gt": [{"$size": "$user_application"}, 0]}}}
+            {"$addFields": {"is_applied": {"$gt": [{"$size": "$user_application"}, 0]}}},
+            
+            {"$lookup": {
+                "from": saved_jobs_collection.name,
+                "let": {"jobId": "$_id", "seekerId": user_oid},
+                "pipeline": [{"$match": {"$expr": {"$and": [{"$eq": ["$job_id", "$$jobId"]}, {"$eq": ["$user_id", "$$seekerId"]}]}}}],
+                "as": "user_saved"
+            }},
+            {"$addFields": {"is_saved": {"$gt": [{"$size": "$user_saved"}, 0]}}}
         ]
         return pipeline
 
@@ -154,7 +162,8 @@ class JobFeedService:
         
         job_feeds = []
         async for job in cursor:
-            job_feeds.append(self._format_feed_response(job))
+            is_saved_status = job.get("is_saved", False)
+            job_feeds.append(self._format_feed_response(job, is_saved=is_saved_status))
             
         return job_feeds
     
@@ -238,6 +247,7 @@ class JobFeedService:
         
         search_results = []
         async for job in cursor:
-            search_results.append(self._format_feed_response(job)) #[cite: 8]
+            is_saved_status = job.get("is_saved", False)
+            search_results.append(self._format_feed_response(job, is_saved=is_saved_status))
             
         return search_results
