@@ -65,7 +65,11 @@ async def update_application_status_route(
     result = await applicant_service.update_applicant_status(
         employer_user_id=user_id,
         application_id=application_id,
-        new_status=payload.status
+        new_status=payload.status,
+        
+        # 🟢 បន្ថែម ២ បន្ទាត់នេះ ដើម្បីឱ្យទិន្នន័យឆ្លងកាត់ទៅដល់ Service 
+        interview_schedule=payload.interview_schedule,
+        feedback=payload.feedback
     )
     
     return APIResponse(
