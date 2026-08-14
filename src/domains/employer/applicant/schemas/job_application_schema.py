@@ -14,6 +14,10 @@ class ApplyJobRequest(BaseModel):
 class UpdateApplicationStatus(BaseModel):
     """Schema សម្រាប់ Employer ប្រើពេលប្តូរស្ថានភាពបេក្ខជន"""
     status: str = Field(..., description="ឧទាហរណ៍: pending, reviewed, shortlisted, interview, hired, rejected")
+    
+    # 🟢 បន្ថែម Field ទាំង ២ នេះ ដើម្បីឱ្យ API ព្រមទទួលយកទិន្នន័យពី Flutter
+    interview_schedule: Optional[Dict] = Field(None, description="ព័ត៌មានលម្អិតពេលហៅសម្ភាសន៍")
+    feedback: Optional[str] = Field(None, description="មតិកែលម្អពេល Reject")
 
 
 # ==========================================
@@ -42,6 +46,10 @@ class ApplicantResponse(BaseModel):
     status: str
     applied_at: datetime
     
+    # 🟢 បន្ថែម Field ទាំង ២ នេះ ដើម្បីឱ្យ API ព្រមបោះទិន្នន័យនេះទៅកាន់ Flutter វិញ
+    interview_schedule: Optional[Dict] = None
+    feedback: Optional[str] = None
+    
 class SeekerApplicationResponse(BaseModel):
     """Schema សម្រាប់បោះព័ត៌មានលម្អិតនៃការដាក់ពាក្យ ទៅឱ្យ Seeker"""
     application_id: str
@@ -61,7 +69,7 @@ class SeekerApplicationResponse(BaseModel):
     applied_at: datetime
     updated_at: datetime
     
-    # 🟢 Field ថ្មីសម្រាប់ Detail View
+    # Field ថ្មីសម្រាប់ Detail View
     status_history: List[Dict] = []
     interview_schedule: Optional[Dict] = None
     feedback: Optional[str] = ""
