@@ -13,7 +13,8 @@ from src.domains.profile.seeker_profile.services.core_profile_service import hel
 
 class ApplicantService:
 
-    async def get_applicants_by_job(self, employer_user_id: str, job_id: str, status_filter: str = "all") -> list:
+    # 🟢 ១. បន្ថែម parameter `search_keyword`
+    async def get_applicants_by_job(self, employer_user_id: str, job_id: str, status_filter: str = "all", search_keyword: str = None) -> list:
         query = {}
 
         # ១. ការពារសុវត្ថិភាព
@@ -37,7 +38,7 @@ class ApplicantService:
         if status_filter and status_filter.lower() != "all":
             query["status"] = status_filter.lower()
 
-        # ៤. Pipeline Join 
+        # ៤. Pipeline Join ដំបូង
         pipeline = [
             {"$match": query},
             {"$sort": {"applied_at": -1}},
@@ -69,6 +70,22 @@ class ApplicantService:
             },
             {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}}
         ]
+        
+        # 🟢 ៥. បន្ថែមមុខងារ Search បន្ទាប់ពី Join ទិន្នន័យរួចរាល់
+        if search_keyword and search_keyword.strip():
+            # ប្រើប្រាស់ Regex ដើម្បីស្វែងរកដោយមិនប្រកាន់អក្សរតូចធំ (Case-insensitive)
+            search_regex = {"$regex": search_keyword.strip(), "$options": "i"}
+            
+            # ស្វែងរកតាម នាមត្រកូល, នាមខ្លួន, ឬ ជំនាញ (Skills)
+            pipeline.append({
+                "$match": {
+                    "$or": [
+                        {"user_info.first_name": search_regex},
+                        {"user_info.last_name": search_regex},
+                        {"seeker_info.skills": search_regex}
+                    ]
+                }
+            })
         
         cursor = job_applications_collection.aggregate(pipeline)
         
