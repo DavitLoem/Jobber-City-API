@@ -92,6 +92,8 @@ class ApplicantService:
                 "resume_filename": app.get("resume_filename"),
                 "cover_letter": app.get("cover_letter"),
                 "status": app.get("status"),
+                "interview_schedule": app.get("interview_schedule"),
+                "feedback": app.get("feedback"),
                 "applied_at": app.get("applied_at")
             })
             

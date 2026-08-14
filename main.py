@@ -161,4 +161,3 @@ app.include_router(company_profile_router)
 app.include_router(job_post_router)
 app.include_router(applicant_router)
 
-

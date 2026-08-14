@@ -1,4 +1,5 @@
-from pymongo import UpdateOne
+from pymongo import UpdateOne, ASCENDING
+from pymongo.errors import OperationFailure
 from datetime import datetime, timezone
 from src.core.mongo import (
     job_levels_collection,
@@ -76,7 +77,6 @@ master_data_configs = [
         "name": "Skills",
         "collection": skills_collection,
         "data": [
-            # Hard Skills / Technical Skills
             {"name": "Python", "is_active": True},
             {"name": "JavaScript", "is_active": True},
             {"name": "Flutter", "is_active": True},
@@ -87,7 +87,6 @@ master_data_configs = [
             {"name": "Data Analysis", "is_active": True},
             {"name": "UI/UX Design", "is_active": True},
             {"name": "Digital Marketing", "is_active": True},
-            # Soft Skills / General Skills
             {"name": "Project Management", "is_active": True},
             {"name": "Communication", "is_active": True},
             {"name": "Problem Solving", "is_active": True},
@@ -113,15 +112,29 @@ async def seed_master_data():
         if not data_list:
             continue
 
-        # បង្កើត Unique Index តាមឈ្មោះ ដើម្បីកុំឱ្យមានទិន្នន័យជាន់គ្នា
-        await collection.create_index("name", unique=True)
+        # ចាប់យក Error បើមានបញ្ហាក្នុងការបង្កើត Index (ការពារកុំឱ្យគាំង Script ទាំងមូល)
+        try:
+            # ប្រើទម្រង់ [("name", ASCENDING)] ជំនួសឱ្យ "name" ទទេ
+            await collection.create_index([("name", ASCENDING)], unique=True)
+        except OperationFailure as e:
+            print(f"     ⚠️ មិនអាចបង្កើត Index ថ្មីបានទេ (អាចមាន Index ចាស់រួចហើយ): {e.details.get('errmsg', str(e))}")
+            print(f"     👉 កំពុងព្យាយាមលុប Index ចាស់ `name_1` ហើយបង្កើតថ្មី...")
+            try:
+                await collection.drop_index("name_1")
+                await collection.create_index([("name", ASCENDING)], unique=True)
+                print(f"     ✅ ដោះស្រាយ និងបង្កើត Index `unique` បានជោគជ័យ!")
+            except Exception as drop_e:
+                print(f"     ❌ បរាជ័យទាំងស្រុងក្នុងការបង្កើត Index: {drop_e}")
+        except Exception as e:
+            print(f"     ❌ មានបញ្ហាក្នុងការភ្ជាប់ទៅ Database (សូមឆែក .env ឬ IP Whitelist): {e}")
+            return # បញ្ឈប់ការរត់ Script បើភ្ជាប់ Database មិនបាន
 
         operations = []
         
-        # ប្រើ enumerate ដើម្បីបង្កើត order ស្វ័យប្រវត្តិតាមលំដាប់នៃបញ្ជីទិន្នន័យ
+        # ប្រើ enumerate ដើម្បីបង្កើត order ស្វ័យប្រវត្តិតាមលំដាប់នៃបញ្ជីទិន្នន័យ[cite: 3]
         for index, item in enumerate(data_list, start=1):
             
-            # កែមកប្រើ Field `order` វិញតាម Schema
+            # កែមកប្រើ Field `order` វិញតាម Schema[cite: 3]
             item["order"] = index
             
             op = UpdateOne(
@@ -139,7 +152,9 @@ async def seed_master_data():
             )
             operations.append(op)
         
-        result = await collection.bulk_write(operations)
-        print(f"  ✅ {collection_name} -> Add New: {result.upserted_count} | Update: {result.modified_count}")
+        # រត់បញ្ជូលទិន្នន័យដោយប្រើ bulk_write[cite: 3]
+        if operations:
+            result = await collection.bulk_write(operations)
+            print(f"  ✅ {collection_name} -> Add New: {result.upserted_count} | Update: {result.modified_count}")
         
     print("🎉 All Master Data Seeded Successfully!")
