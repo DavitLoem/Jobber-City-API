@@ -12,71 +12,54 @@ from src.core.mongo import (
 from src.domains.profile.seeker_profile.services.core_profile_service import helper_format_profile
 
 class ApplicantService:
+    
+    def _format_applicant_response(self, app: dict) -> dict:
+        seeker = app.get("seeker_info", {})
+        user = app.get("user_info", {}) 
+        job = app.get("job_info", {})
+        
+        return {
+            "application_id": str(app["_id"]),
+            "seeker_user_id": str(app["seeker_user_id"]),
+            "job_title": job.get("title", "Unknown Job"),
+            "first_name": user.get("first_name", "Unknown"),
+            "last_name": user.get("last_name", ""),
+            "profile_image_url": seeker.get("profile_image_url"),
+            "current_position": seeker.get("current_position", ""),
+            "skills": seeker.get("skills", []), 
+            "years_of_experience": seeker.get("years_of_experience", 0), 
+            "resume_url": app.get("resume_url"),
+            "resume_filename": app.get("resume_filename"),
+            "cover_letter": app.get("cover_letter"),
+            "status": app.get("status"),
+            "interview_schedule": app.get("interview_schedule"),
+            "feedback": app.get("feedback"),
+            "applied_at": app.get("applied_at")
+        }
+        
+    def _build_applicant_pipeline(self, company_id: ObjectId, job_id: str, status_filter: str, search_keyword: str, sort_by: str, skip: int, limit: int) -> list:
+        query = {"company_id": company_id}
 
-    # 🟢 ១. បន្ថែម parameter `search_keyword`
-    async def get_applicants_by_job(self, employer_user_id: str, job_id: str, status_filter: str = "all", search_keyword: str = None) -> list:
-        query = {}
-
-        # ១. ការពារសុវត្ថិភាព
-        employer_profile = await company_profiles_collection.find_one({"user_id": ObjectId(employer_user_id)})
-        if not employer_profile:
-            raise HTTPException(status_code=403, detail="Employer profile not found.")
-            
-        company_id = employer_profile["_id"]
-
-        # ២. ឆែកមើល All Jobs
-        if job_id.lower() == "all":
-            query["company_id"] = company_id
-        else:
-            if not ObjectId.is_valid(job_id):
-                raise HTTPException(status_code=400, detail="Invalid Job ID format.")
+        if job_id.lower() != "all":
+            if ObjectId.is_valid(job_id):
+                query["job_id"] = ObjectId(job_id)
                 
-            query["job_id"] = ObjectId(job_id)
-            query["company_id"] = company_id
-
-        # ៣. ត្រងតាម Status
         if status_filter and status_filter.lower() != "all":
             query["status"] = status_filter.lower()
 
-        # ៤. Pipeline Join ដំបូង
+        # 🟢 ១. ដក {"$sort": {"applied_at": -1}} ចេញពីកន្លែងចាស់សិន 
         pipeline = [
             {"$match": query},
-            {"$sort": {"applied_at": -1}},
-            {
-                "$lookup": {
-                    "from": job_posts_collection.name,
-                    "localField": "job_id",
-                    "foreignField": "_id",
-                    "as": "job_info"
-                }
-            },
+            {"$lookup": {"from": job_posts_collection.name, "localField": "job_id", "foreignField": "_id", "as": "job_info"}},
             {"$unwind": {"path": "$job_info", "preserveNullAndEmptyArrays": True}},
-            {
-                "$lookup": {
-                    "from": seeker_profiles_collection.name,
-                    "localField": "seeker_user_id",
-                    "foreignField": "user_id",
-                    "as": "seeker_info"
-                }
-            },
+            {"$lookup": {"from": seeker_profiles_collection.name, "localField": "seeker_user_id", "foreignField": "user_id", "as": "seeker_info"}},
             {"$unwind": {"path": "$seeker_info", "preserveNullAndEmptyArrays": True}},
-            {
-                "$lookup": {
-                    "from": users_collection.name,
-                    "localField": "seeker_user_id",
-                    "foreignField": "_id",
-                    "as": "user_info"
-                }
-            },
+            {"$lookup": {"from": users_collection.name, "localField": "seeker_user_id", "foreignField": "_id", "as": "user_info"}},
             {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}}
         ]
         
-        # 🟢 ៥. បន្ថែមមុខងារ Search បន្ទាប់ពី Join ទិន្នន័យរួចរាល់
         if search_keyword and search_keyword.strip():
-            # ប្រើប្រាស់ Regex ដើម្បីស្វែងរកដោយមិនប្រកាន់អក្សរតូចធំ (Case-insensitive)
             search_regex = {"$regex": search_keyword.strip(), "$options": "i"}
-            
-            # ស្វែងរកតាម នាមត្រកូល, នាមខ្លួន, ឬ ជំនាញ (Skills)
             pipeline.append({
                 "$match": {
                     "$or": [
@@ -86,33 +69,60 @@ class ApplicantService:
                     ]
                 }
             })
+            
+        # 🟢 ២. បន្ថែមដំណាក់កាល តម្រៀបទិន្នន័យ (Sorting Stage) នៅទីនេះវិញ
+        if sort_by == "name_asc":
+            # តម្រៀបតាមឈ្មោះ A-Z
+            pipeline.append({"$sort": {"user_info.first_name": 1, "user_info.last_name": 1}})
+        elif sort_by == "interview_asc":
+            # តម្រៀបតាមថ្ងៃសម្ភាសន៍ជិតបំផុត (អ្នកអត់មានថ្ងៃសម្ភាសន៍នឹងធ្លាក់ទៅក្រោម)
+            pipeline.append({"$sort": {"interview_schedule.date": 1, "applied_at": -1}})
+        else:
+            # លំនាំដើម: តម្រៀបតាមអ្នកដាក់ពាក្យថ្មីៗមុនគេ
+            pipeline.append({"$sort": {"applied_at": -1}})
+
+        pipeline.extend([
+            {"$skip": skip},
+            {"$limit": limit}
+        ])
         
+        return pipeline
+
+    # 🟢 ១. បន្ថែម parameter `search_keyword`
+    async def get_applicants_by_job(
+        self, 
+        employer_user_id: str, 
+        job_id: str, 
+        status_filter: str = "all", 
+        search_keyword: str = None,
+        sort_by: str = "newest",
+        page: int = 1,      
+        limit: int = 20     
+    ) -> list:
+        
+        # ១. ការពារសុវត្ថិភាព និងទាញយក Company ID
+        employer_profile = await company_profiles_collection.find_one({"user_id": ObjectId(employer_user_id)})
+        if not employer_profile:
+            raise HTTPException(status_code=403, detail="Employer profile not found.")
+            
+        # ២. កសាង Pipeline ដោយហៅ Helper
+        skip = (page - 1) * limit
+        pipeline = self._build_applicant_pipeline(
+            company_id=employer_profile["_id"],
+            job_id=job_id,
+            status_filter=status_filter,
+            search_keyword=search_keyword,
+            sort_by=sort_by,
+            skip=skip,
+            limit=limit
+        )
+        
+        # ៣. ប្រតិបត្តិការ Query និងទាញទិន្នន័យ (ហៅ Helper រៀបចំ Format)
         cursor = job_applications_collection.aggregate(pipeline)
         
         applicants = []
         async for app in cursor:
-            seeker = app.get("seeker_info", {})
-            user = app.get("user_info", {}) 
-            job = app.get("job_info", {})
-            
-            applicants.append({
-                "application_id": str(app["_id"]),
-                "seeker_user_id": str(app["seeker_user_id"]),
-                "job_title": job.get("title", "Unknown Job"),
-                "first_name": user.get("first_name", "Unknown"),
-                "last_name": user.get("last_name", ""),
-                "profile_image_url": seeker.get("profile_image_url"),
-                "current_position": seeker.get("current_position", ""),
-                "skills": seeker.get("skills", []), 
-                "years_of_experience": seeker.get("years_of_experience", 0), 
-                "resume_url": app.get("resume_url"),
-                "resume_filename": app.get("resume_filename"),
-                "cover_letter": app.get("cover_letter"),
-                "status": app.get("status"),
-                "interview_schedule": app.get("interview_schedule"),
-                "feedback": app.get("feedback"),
-                "applied_at": app.get("applied_at")
-            })
+            applicants.append(self._format_applicant_response(app))
             
         return applicants
     

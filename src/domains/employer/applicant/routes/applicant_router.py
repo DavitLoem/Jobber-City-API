@@ -17,25 +17,27 @@ router = APIRouter(
 async def get_job_applicants_route(
     job_id: str = Path(..., description="ID នៃការងារដែល Employer បានផុស"),
     status: str = Query("all", description="ត្រងតាម Status: pending, reviewed, shortlisted, interview, hired, rejected"),
-    # 🟢 ១. បន្ថែម Query Parameter សម្រាប់ Search
-    search: str = Query(None, description="ពាក្យគន្លឹះសម្រាប់ស្វែងរក (ឧទាហរណ៍៖ ឈ្មោះ ឬ ជំនាញ)"), 
+    search: str = Query(None, description="ពាក្យគន្លឹះសម្រាប់ស្វែងរក"), 
+    
+    # 🟢 ១. បន្ថែម Query Parameter សម្រាប់ Sorting
+    sort_by: str = Query("newest", description="ការតម្រៀប: newest, name_asc, interview_asc"),
+    
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(require_employer)
 ):
-    """ទាញយកបញ្ជីអ្នកដាក់ពាក្យ សម្រាប់ការងារមួយនេះ (អាច Filter តាម Status និង Search)"""
-    
     user_id = str(current_user["_id"])
     result = await applicant_service.get_applicants_by_job(
         employer_user_id=user_id,
         job_id=job_id,
         status_filter=status,
-        search_keyword=search # 🟢 ២. បញ្ជូនពាក្យគន្លឹះនេះទៅកាន់ Service
+        search_keyword=search,
+        sort_by=sort_by, # 🟢 ២. បោះតម្លៃនេះទៅ Service
+        page=page,    
+        limit=limit   
     )
     
-    return APIResponse(
-        success=True, 
-        message="Get applicants successfully", 
-        data=result
-    )
+    return APIResponse(success=True, message="Get applicants successfully", data=result)
     
 @router.get("/applications/dropdown", response_model=APIResponse)
 async def get_job_filter_dropdown_route(
