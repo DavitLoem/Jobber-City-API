@@ -257,6 +257,65 @@ class ApplicantService:
 
         return {"application_id": str(updated_app["_id"]), "new_status": new_status} 
 
+    # 🟢 អនុគមន៍ថ្មីសម្រាប់ធ្វើការ Update ទិន្នន័យច្រើនព្រមគ្នាក្នុង Database
+    async def bulk_update_applicant_status(
+        self, 
+        employer_user_id: str, 
+        application_ids: list, 
+        new_status: str, 
+        interview_schedule: dict = None, 
+        feedback: str = None
+    ) -> dict:
+        
+        if not application_ids:
+            raise HTTPException(status_code=400, detail="No application IDs provided.")
+
+        valid_statuses = ["pending", "reviewed", "shortlisted", "interview", "hired", "rejected"] 
+        if new_status not in valid_statuses:
+             raise HTTPException(status_code=400, detail="Status is not valid.") 
+
+        company = await company_profiles_collection.find_one({"user_id": ObjectId(employer_user_id)}) 
+        if not company:
+             raise HTTPException(status_code=403, detail="Permission Denied") 
+             
+        now = datetime.now(timezone.utc)
+        
+        # ១. បម្លែង String IDs ទាំងអស់ទៅជា ObjectId
+        try:
+            object_ids = [ObjectId(app_id) for app_id in application_ids]
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid Application ID format in the list.")
+            
+        # ២. រៀបចំទិន្នន័យសម្រាប់ Update
+        update_data = {
+            "status": new_status, 
+            "updated_at": now
+        }
+        
+        if new_status == "interview" and interview_schedule:
+             update_data["interview_schedule"] = interview_schedule
+        if feedback:
+             update_data["feedback"] = feedback
+
+        # ៣. ប្រើប្រាស់ update_many ជាមួយនឹងលក្ខខណ្ឌ $in 
+        result = await job_applications_collection.update_many(
+            {
+                "_id": {"$in": object_ids}, 
+                "company_id": company["_id"] # ការពារសុវត្ថិភាព
+            },
+            {
+                "$set": update_data,
+                "$push": {"status_history": {"status": new_status, "date": now}} 
+            }
+        )
+
+        # ត្រឡប់ចំនួនដែលរកឃើញ និងចំនួនដែលបាន Update ពិតប្រាកដ
+        return {
+            "matched_count": result.matched_count, 
+            "modified_count": result.modified_count,
+            "new_status": new_status
+        }
+
     async def get_seeker_profile_readonly(self, employer_user_id: str, seeker_user_id: str) -> dict:
         """Employer ចុចមើល Profile ពេញលេញរបស់ Seeker"""
         

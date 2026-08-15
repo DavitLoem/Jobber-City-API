@@ -4,7 +4,7 @@ from typing import List
 from src.core.response import APIResponse
 from src.dependencies.dependencies import require_employer # 🎯 ទាមទារសិទ្ធិ Employer
 from src.domains.employer.applicant.services.applicant_service import ApplicantService
-from src.domains.employer.applicant.schemas.job_application_schema import ApplicantStatusSummaryResponse, UpdateApplicationStatus, ApplicantResponse
+from src.domains.employer.applicant.schemas.job_application_schema import ApplicantStatusSummaryResponse, BulkUpdateApplicationStatus, UpdateApplicationStatus, ApplicantResponse
 
 applicant_service = ApplicantService()
 
@@ -97,6 +97,28 @@ async def update_application_status_route(
     return APIResponse(
         success=True, 
         message=f"Application status updated to {payload.status}", 
+        data=result
+    )
+
+@router.patch("/applications/bulk-status", response_model=APIResponse)
+async def bulk_update_application_status_route(
+    payload: BulkUpdateApplicationStatus,
+    current_user: dict = Depends(require_employer)
+):
+    """ប្តូរ Workflow Status របស់អ្នកដាក់ពាក្យច្រើននាក់ក្នុងពេលតែមួយ (Bulk Action)"""
+    
+    user_id = str(current_user["_id"])
+    result = await applicant_service.bulk_update_applicant_status(
+        employer_user_id=user_id,
+        application_ids=payload.application_ids,
+        new_status=payload.status,
+        interview_schedule=payload.interview_schedule,
+        feedback=payload.feedback
+    )
+    
+    return APIResponse(
+        success=True, 
+        message=f"Successfully updated {result['modified_count']} applications to {payload.status}", 
         data=result
     )
 

@@ -87,3 +87,12 @@ class ApplicantStatusSummaryResponse(BaseModel):
     interview: int = 0
     hired: int = 0
     rejected: int = 0
+    
+# 🟢 បន្ថែម Schema នេះសម្រាប់ទទួល Data ជា Array ពី Flutter
+class BulkUpdateApplicationStatus(BaseModel):
+    """Schema សម្រាប់ Employer ប្រើពេលប្តូរស្ថានភាពបេក្ខជនច្រើននាក់ព្រមគ្នា (Bulk Action)"""
+    application_ids: List[str] = Field(..., description="បញ្ជី ID របស់បេក្ខជនទាំងអស់ដែលត្រូវបានជ្រើសរើស")
+    status: str = Field(..., description="ស្ថានភាពថ្មី (ឧទាហរណ៍: shortlisted, interview, rejected)")
+    
+    interview_schedule: Optional[Dict] = Field(None, description="ព័ត៌មានលម្អិតពេលហៅសម្ភាសន៍")
+    feedback: Optional[str] = Field(None, description="មតិកែលម្អ (សម្រាប់ករណី Reject)")
