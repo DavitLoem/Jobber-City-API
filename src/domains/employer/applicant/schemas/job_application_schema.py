@@ -78,3 +78,12 @@ class JobDropdownItemResponse(BaseModel):
     job_id: str
     display_name: str
     status: str
+    
+class ApplicantStatusSummaryResponse(BaseModel):
+    """Schema សម្រាប់បោះចំនួនបេក្ខជនសរុបក្នុង Status នីមួយៗទៅឱ្យ UI"""
+    all: int = 0
+    pending: int = 0
+    shortlisted: int = 0
+    interview: int = 0
+    hired: int = 0
+    rejected: int = 0

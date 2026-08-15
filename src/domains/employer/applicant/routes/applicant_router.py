@@ -4,7 +4,7 @@ from typing import List
 from src.core.response import APIResponse
 from src.dependencies.dependencies import require_employer # 🎯 ទាមទារសិទ្ធិ Employer
 from src.domains.employer.applicant.services.applicant_service import ApplicantService
-from src.domains.employer.applicant.schemas.job_application_schema import UpdateApplicationStatus, ApplicantResponse
+from src.domains.employer.applicant.schemas.job_application_schema import ApplicantStatusSummaryResponse, UpdateApplicationStatus, ApplicantResponse
 
 applicant_service = ApplicantService()
 
@@ -53,6 +53,25 @@ async def get_job_filter_dropdown_route(
     return APIResponse(
         success=True, 
         message="Job dropdown list fetched successfully", 
+        data=result
+    )
+    
+@router.get("/{job_id}/applicants/summary", response_model=APIResponse[ApplicantStatusSummaryResponse])
+async def get_applicant_status_summary_route(
+    job_id: str = Path(..., description="ID នៃការងារ (ដាក់ 'all' សម្រាប់ទាំងអស់)"),
+    current_user: dict = Depends(require_employer)
+):
+    """ទាញយកចំនួនសរុបនៃបេក្ខជនក្នុង Status នីមួយៗ សម្រាប់ដាក់បង្ហាញលើ Tab របស់ Flutter"""
+    
+    user_id = str(current_user["_id"])
+    result = await applicant_service.get_applicant_status_summary(
+        employer_user_id=user_id,
+        job_id=job_id
+    )
+    
+    return APIResponse(
+        success=True, 
+        message="Get applicant summary successfully", 
         data=result
     )
 

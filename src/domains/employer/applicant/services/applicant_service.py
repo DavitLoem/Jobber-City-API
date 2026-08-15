@@ -166,6 +166,52 @@ class ApplicantService:
             })
             
         return dropdown_jobs
+    
+    async def get_applicant_status_summary(self, employer_user_id: str, job_id: str) -> dict:
+        """ទាញយកចំនួនបេក្ខជនសរុប ដោយបែងចែកតាម Status (ប្រើ $group Aggregation)"""
+        
+        employer_profile = await company_profiles_collection.find_one({"user_id": ObjectId(employer_user_id)})
+        if not employer_profile:
+            raise HTTPException(status_code=403, detail="Employer profile not found.")
+            
+        company_id = employer_profile["_id"]
+        
+        # ១. រៀបចំលក្ខខណ្ឌស្វែងរក (បើ 'all' យកការងារក្រុមហ៊ុនទាំងអស់, បើមាន id យកតែការងារនោះ)
+        query = {"company_id": company_id}
+        if job_id.lower() != "all":
+            if not ObjectId.is_valid(job_id):
+                raise HTTPException(status_code=400, detail="Invalid Job ID format.")
+            query["job_id"] = ObjectId(job_id)
+
+        # ២. បង្កើត Pipeline ដើម្បី Group តាម status និងរាប់ចំនួន (Count)
+        pipeline = [
+            {"$match": query},
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+        ]
+        
+        cursor = job_applications_collection.aggregate(pipeline)
+        
+        # ៣. រៀបចំទិន្នន័យ Default
+        summary = {
+            "all": 0, "pending": 0, "shortlisted": 0, 
+            "interview": 0, "hired": 0, "rejected": 0
+        }
+        
+        total_all = 0
+        
+        # ៤. បញ្ចូលតួលេខពិតប្រាកដដែលបានមកពី DB
+        async for doc in cursor:
+            status_name = doc.get("_id")
+            count_val = doc.get("count", 0)
+            
+            if status_name in summary:
+                summary[status_name] = count_val
+            total_all += count_val
+            
+        # ៥. កំណត់ចំនួនសរុប (All)
+        summary["all"] = total_all
+        
+        return summary
 
     async def update_applicant_status(self, employer_user_id: str, application_id: str, new_status: str, interview_schedule: dict = None, feedback: str = None) -> dict:
         """ផ្លាស់ប្តូរស្ថានភាពបេក្ខជន (ឧ. ហៅមកសម្ភាសន៍ ឬបដិសេធ)"""
