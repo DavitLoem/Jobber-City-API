@@ -21,6 +21,7 @@ async def get_job_applicants_route(
     
     # 🟢 ១. បន្ថែម Query Parameter សម្រាប់ Sorting
     sort_by: str = Query("newest", description="ការតម្រៀប: newest, name_asc, interview_asc"),
+    is_export: bool = Query(False, description="បន្ថែម Query Parameter សម្រាប់ Export"),
     
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
@@ -32,9 +33,10 @@ async def get_job_applicants_route(
         job_id=job_id,
         status_filter=status,
         search_keyword=search,
-        sort_by=sort_by, # 🟢 ២. បោះតម្លៃនេះទៅ Service
+        sort_by=sort_by,
         page=page,    
-        limit=limit   
+        limit=limit,
+        is_export=is_export
     )
     
     return APIResponse(success=True, message="Get applicants successfully", data=result)

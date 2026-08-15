@@ -24,6 +24,9 @@ class ApplicantService:
             "job_title": job.get("title", "Unknown Job"),
             "first_name": user.get("first_name", "Unknown"),
             "last_name": user.get("last_name", ""),
+            "email": user.get("email", ""),           
+            "phone": seeker.get("phone_number", ""),  
+            "gender": seeker.get("gender", "Unknown"),
             "profile_image_url": seeker.get("profile_image_url"),
             "current_position": seeker.get("current_position", ""),
             "skills": seeker.get("skills", []), 
@@ -37,7 +40,10 @@ class ApplicantService:
             "applied_at": app.get("applied_at")
         }
         
-    def _build_applicant_pipeline(self, company_id: ObjectId, job_id: str, status_filter: str, search_keyword: str, sort_by: str, skip: int, limit: int) -> list:
+    def _build_applicant_pipeline(
+        self, company_id: ObjectId, job_id: str, status_filter: str, 
+        search_keyword: str, sort_by: str, skip: int, limit: int, is_export: bool = False
+    ) -> list:
         query = {"company_id": company_id}
 
         if job_id.lower() != "all":
@@ -86,6 +92,12 @@ class ApplicantService:
             {"$limit": limit}
         ])
         
+        if not is_export:
+            pipeline.extend([
+                {"$skip": skip},
+                {"$limit": limit}
+            ])
+        
         return pipeline
 
     # 🟢 ១. បន្ថែម parameter `search_keyword`
@@ -97,7 +109,8 @@ class ApplicantService:
         search_keyword: str = None,
         sort_by: str = "newest",
         page: int = 1,      
-        limit: int = 20     
+        limit: int = 20,
+        is_export: bool = False    
     ) -> list:
         
         # ១. ការពារសុវត្ថិភាព និងទាញយក Company ID
@@ -114,7 +127,8 @@ class ApplicantService:
             search_keyword=search_keyword,
             sort_by=sort_by,
             skip=skip,
-            limit=limit
+            limit=limit,
+            is_export=is_export
         )
         
         # ៣. ប្រតិបត្តិការ Query និងទាញទិន្នន័យ (ហៅ Helper រៀបចំ Format)
