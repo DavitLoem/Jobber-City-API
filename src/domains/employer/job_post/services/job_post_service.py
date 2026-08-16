@@ -114,43 +114,85 @@ class JobPostService:
         # ៦. បោះទិន្នន័យដែលទើបតែ Save រួចត្រឡប់ទៅឱ្យ Router វិញ
         return self._format_response(new_job_dict)
     
+    # 🟢 ១. Helper សម្រាប់កសាង Query ស្វែងរក និងត្រង
+    def _build_job_query(self, company_id: ObjectId, search: str, status: str) -> dict:
+        query = {"company_id": company_id}
+        
+        if search:
+            query["title"] = {"$regex": search, "$options": "i"}
+            
+        if status and status.lower() != "all":
+            query["status"] = status.lower()
+            
+        return query
+
+    # 🟢 ២. Helper សម្រាប់រៀបចំលក្ខខណ្ឌតម្រៀប (Sorting)
+    def _build_job_sort_logic(self, sort_by: str) -> list:
+        if sort_by == "oldest":
+            # ចាស់បំផុត: តម្រៀបតាមថ្ងៃបង្កើតពីមុនមកក្រោយ
+            return [("created_at", 1)]
+        elif sort_by == "expiring_soon":
+            # ជិតផុតកំណត់: តម្រៀបតាមថ្ងៃបិទទទួលពាក្យ (closing_date) ជិតមកដល់មុនគេ
+            return [("closing_date", 1)]
+        else:
+            # លំនាំដើម (newest): តម្រៀបតាមថ្ងៃបង្កើតថ្មីបំផុតមុនគេ
+            return [("created_at", -1)]
+
+    # 🟢 ៣. អនុគមន៍មេ (ធ្វើឱ្យខ្លី និងងាយយល់ជាងមុន)
     async def get_my_job_posts(
         self, 
         user_id: str, 
         search: str = None, 
         status: str = None, 
+        sort_by: str = "newest", # 🎯 បន្ថែម parameter តម្រៀប
         page: int = 1, 
         limit: int = 10
     ) -> list:
-        """ទាញយកបញ្ជីការងារទាំងអស់ដែលក្រុមហ៊ុននេះបាន Post ព្រមទាំងអាច Search និង Filter បាន"""
+        """ទាញយកបញ្ជីការងារទាំងអស់ដែលក្រុមហ៊ុននេះបាន Post"""
         user_oid = ObjectId(user_id)
 
-        # ១. រកមើល Company របស់ Employer
         company = await company_profiles_collection.find_one({"user_id": user_oid})
         if not company:
             return []
 
-        company_id = company["_id"]
-
-        # ២. រៀបចំ Query សម្រាប់ Search និង Filter
-        query = {"company_id": company_id}
-        
-        # ក. ស្វែងរកតាមចំណងជើងការងារ (Title) - មិនប្រកាន់អក្សរតូចធំ (Case-insensitive)
-        if search:
-            query["title"] = {"$regex": search, "$options": "i"}
-            
-        # ខ. ត្រងតាមស្ថានភាព (Status) ឧ. active, inactive, closed, draft
-        if status and status.lower() != "all":
-            query["status"] = status.lower()
-
-        # ៣. គណនាការកាត់ទំព័រ (Pagination)
+        # ហៅ Helper មកប្រើ
+        query = self._build_job_query(company["_id"], search, status)
+        sort_logic = self._build_job_sort_logic(sort_by)
         skip = (page - 1) * limit
 
-        # ៤. ទាញយកការងារទាំងអស់តាម Query ខាងលើ 
-        # .sort("created_at", -1) រៀបតាមថ្ងៃ Post ថ្មីបំផុតឱ្យនៅខាងលើគេ
-        cursor = job_posts_collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        # ប្រើ sort_logic ដែលបានរៀបចំ
+        cursor = job_posts_collection.find(query).sort(sort_logic).skip(skip).limit(limit)
         
-        # ៥. បំប្លែងទិន្នន័យ (Format) ហើយដាក់ចូលក្នុង Array
+        jobs = []
+        async for job in cursor:
+            jobs.append(self._format_response(job))
+
+        return jobs
+    
+    async def get_my_job_posts(
+        self, 
+        user_id: str, 
+        search: str = None, 
+        status: str = None, 
+        sort_by: str = "newest", # 🎯 បន្ថែម parameter តម្រៀប
+        page: int = 1, 
+        limit: int = 10
+    ) -> list:
+        """ទាញយកបញ្ជីការងារទាំងអស់ដែលក្រុមហ៊ុននេះបាន Post"""
+        user_oid = ObjectId(user_id)
+
+        company = await company_profiles_collection.find_one({"user_id": user_oid})
+        if not company:
+            return []
+
+        # ហៅ Helper មកប្រើ
+        query = self._build_job_query(company["_id"], search, status)
+        sort_logic = self._build_job_sort_logic(sort_by)
+        skip = (page - 1) * limit
+
+        # ប្រើ sort_logic ដែលបានរៀបចំ
+        cursor = job_posts_collection.find(query).sort(sort_logic).skip(skip).limit(limit)
+        
         jobs = []
         async for job in cursor:
             jobs.append(self._format_response(job))

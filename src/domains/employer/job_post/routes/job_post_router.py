@@ -36,20 +36,20 @@ async def create_job_post(
 async def get_my_job_posts(
     search: Optional[str] = Query(None, description="ស្វែងរកតាមចំណងជើងការងារ"),
     status: Optional[str] = Query(None, description="ត្រងតាមស្ថានភាព ឧ. active, closed, draft"),
+    sort_by: Optional[str] = Query("newest", description="ការតម្រៀប: newest, oldest, expiring_soon"), # 🟢 ថ្មី
     page: int = Query(1, ge=1, description="លេខទំព័រ"),
     limit: int = Query(10, ge=1, le=50, description="ចំនួនទិន្នន័យក្នុងមួយទំព័រ"),
-    
-    current_user: dict = Depends(require_employer) # 🎯 ឆែកថាគាត់ពិតជា Employer មែន
+    current_user: dict = Depends(require_employer) 
 ):
-    """ទាញយកបញ្ជីការងារទាំងអស់របស់ខ្លួនឯង (មានគាំទ្រ Search, Filter Status & Pagination)"""
+    """ទាញយកបញ្ជីការងារទាំងអស់របស់ខ្លួនឯង (មានគាំទ្រ Search, Filter Status, Sorting & Pagination)"""
     
     user_id = str(current_user["_id"])
     
-    # បញ្ជូនទិន្នន័យទៅឱ្យ Service ធ្វើការ
     result = await job_post_service.get_my_job_posts(
         user_id=user_id, 
         search=search, 
         status=status,
+        sort_by=sort_by, # 🟢 បោះចូល Service
         page=page,
         limit=limit
     )
