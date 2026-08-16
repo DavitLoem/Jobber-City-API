@@ -165,10 +165,8 @@ class JobPostService:
         sort_logic = self._build_job_sort_logic(sort_by)
         skip = (page - 1) * limit
 
-        # 🟢 ប្រើប្រាស់ Aggregation ដើម្បីទាញទិន្នន័យ Job + ភ្ជាប់ជាមួយ Applicants
         pipeline = [
             {"$match": query},
-            # ត្រូវបម្លែង list of tuples ទៅជា dict សម្រាប់ MongoDB aggregation
             {"$sort": dict(sort_logic)}, 
             {"$skip": skip},
             {"$limit": limit},
@@ -183,7 +181,7 @@ class JobPostService:
                 }
             },
             
-            # 2. រាប់ចំនួនសរុប និងកាត់យកតែ ៣ នាក់ដំបូង ដើម្បីសន្សំទំហំ
+            # 2. រាប់ចំនួនសរុប និងកាត់យកតែ ៣ នាក់ដំបូង 
             {
                 "$addFields": {
                     "applicant_count": {"$size": "$applications"},
@@ -191,17 +189,30 @@ class JobPostService:
                 }
             },
             
-            # 3. Join យក seeker_profiles តែ ៣ នាក់នោះប៉ុណ្ណោះ ដើម្បីយករូប Avatar
+            # 🟢 3. បំប្លែង seeker_user_id ពី String ទៅ ObjectId ដើម្បីឱ្យ Join ត្រូវគ្នា
+            {
+                "$addFields": {
+                    "recent_seeker_ids": {
+                        "$map": {
+                            "input": "$recent_apps",
+                            "as": "app",
+                            "in": {"$toObjectId": "$$app.seeker_user_id"} 
+                        }
+                    }
+                }
+            },
+            
+            # 🟢 4. Join យក seeker_profiles ដោយប្រើ Array នៃ ObjectIds ដែលទើបបំប្លែង
             {
                 "$lookup": {
                     "from": seeker_profiles_collection.name,
-                    "localField": "recent_apps.seeker_user_id",
+                    "localField": "recent_seeker_ids", # ប្រើ Field ថ្មី
                     "foreignField": "user_id",
                     "as": "seekers"
                 }
             },
             
-            # 4. ទាញយករូប URL និងលុបអ្នកដែលអត់មានរូប (None) ចេញ
+            # 5. ទាញយករូប URL និងលុបអ្នកដែលអត់មានរូបចេញ
             {
                 "$addFields": {
                     "applicant_avatars": {
@@ -214,17 +225,21 @@ class JobPostService:
                                 }
                             },
                             "as": "url",
-                            "cond": {"$ne": ["$$url", None]}
+                            "cond": {"$and": [
+                                {"$ne": ["$$url", None]}, 
+                                {"$ne": ["$$url", ""]}
+                            ]}
                         }
                     }
                 }
             },
             
-            # 5. លុបចោល Field រញ៉េរញ៉ៃដែលលែងប្រើ ដើម្បីឱ្យ Response ដើរលឿន
+            # 6. លុបចោល Field រញ៉េរញ៉ៃដែលលែងប្រើ
             {
                 "$project": {
                     "applications": 0,
                     "recent_apps": 0,
+                    "recent_seeker_ids": 0,
                     "seekers": 0
                 }
             }
