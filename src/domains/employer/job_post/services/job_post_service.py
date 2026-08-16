@@ -157,6 +157,7 @@ class JobPostService:
     ) -> list:
         user_oid = ObjectId(user_id)
 
+        # ១. រកមើលក្រុមហ៊ុន
         company = await company_profiles_collection.find_one({"user_id": user_oid})
         if not company:
             return []
@@ -165,70 +166,34 @@ class JobPostService:
         sort_logic = self._build_job_sort_logic(sort_by)
         skip = (page - 1) * limit
 
-        # 🟢 ១. Pipeline នេះខ្លីជាងមុន ដើម្បីទុក Field ឱ្យយើង Print មើល
-        pipeline = [
-            {"$match": query},
-            {"$sort": dict(sort_logic)}, 
-            {"$skip": skip},
-            {"$limit": limit},
-            
-            # Join យកពាក្យសុំការងារ
-            {
-                "$lookup": {
-                    "from": job_applications_collection.name,
-                    "localField": "_id",
-                    "foreignField": "job_id",
-                    "as": "applications"
-                }
-            },
-            
-            # កាត់យក ៣ នាក់
-            {
-                "$addFields": {
-                    "applicant_count": {"$size": "$applications"},
-                    "recent_apps": {"$slice": ["$applications", 3]}
-                }
-            },
-            
-            # Join យក Profile បេក្ខជន (សាកល្បង Join ត្រង់ៗ ដោយមិនបាច់បំប្លែង)
-            {
-                "$lookup": {
-                    "from": seeker_profiles_collection.name,
-                    "localField": "recent_apps.seeker_user_id",
-                    "foreignField": "user_id",
-                    "as": "seekers"
-                }
-            }
-        ]
-
-        cursor = job_posts_collection.aggregate(pipeline)
+        # 🟢 ២. ទាញយកបញ្ជីការងារធម្មតា (គ្មាន Aggregation)
+        cursor = job_posts_collection.find(query).sort(sort_logic).skip(skip).limit(limit)
         
         jobs = []
         async for job in cursor:
-            # ====================================================
-            # 🔴 ផ្នែក DEBUG: Print ទិន្នន័យចូលទៅក្នុង Terminal (Console)
-            # ====================================================
-            print(f"\n--- DEBUG JOB: {job.get('title')} ---")
+            job_id = job["_id"]
             
-            apps = job.get('recent_apps', [])
-            print(f"1. Recent Applications: {len(apps)} នាក់")
-            if apps:
-                print(f"   => ឧទាហរណ៍ seeker_user_id: {apps[0].get('seeker_user_id')} (ប្រភេទ: {type(apps[0].get('seeker_user_id'))})")
+            # 🟢 ៣. រាប់ចំនួនបេក្ខជនសរុបសម្រាប់ការងារនេះ
+            applicant_count = await job_applications_collection.count_documents({"job_id": job_id})
+            job["applicant_count"] = applicant_count
             
-            seekers = job.get('seekers', [])
-            print(f"2. Profiles រកឃើញ (Seekers): {len(seekers)} នាក់")
+            # 🟢 ៤. ទាញយកអ្នកដាក់ពាក្យ ៣ នាក់ចុងក្រោយ ដើម្បីយករូប
+            apps_cursor = job_applications_collection.find({"job_id": job_id}).sort("applied_at", -1).limit(3)
             
             avatars = []
-            for seeker in seekers:
-                img_url = seeker.get("profile_image_url")
-                print(f"   => រកឃើញបេក្ខជន: {seeker.get('first_name')} | រូបភាព: {img_url}")
-                if img_url:
-                    avatars.append(img_url)
-            # ====================================================
-
-            # 🟢 ២. យើងចាប់យករូបភាពដោយប្រើ Python សិន ដើម្បីតេស្ត
+            async for app in apps_cursor:
+                seeker_id = app.get("seeker_user_id")
+                if seeker_id:
+                    # ស្វែងរក Profile ដូចកូដ Debug ដែលដើរ ១០០% មុននេះ
+                    profile = await seeker_profiles_collection.find_one({"user_id": seeker_id})
+                    if profile:
+                        avatars.append(profile.get("profile_image_url") or "")
+                    else:
+                        avatars.append("")
+                        
             job["applicant_avatars"] = avatars
             
+            # ៥. បញ្ចូលទៅក្នុងបញ្ជីឆ្លើយតប
             jobs.append(self._format_response(job))
 
         return jobs
