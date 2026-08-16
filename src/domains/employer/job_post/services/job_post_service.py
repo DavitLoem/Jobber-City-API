@@ -2,7 +2,12 @@ from bson import ObjectId
 from fastapi import HTTPException
 from datetime import datetime, timezone
 
-from src.core.mongo import job_posts_collection, company_profiles_collection
+from src.core.mongo import (
+    job_posts_collection, 
+    company_profiles_collection,
+    job_applications_collection,
+    seeker_profiles_collection  
+)
 
 from src.domains.employer.job_post.models.job_post_model import JobPostModel
 from src.domains.employer.job_post.schemas.job_post_schema import JobPostCreate, JobPostUpdate
@@ -43,7 +48,9 @@ class JobPostService:
             "closing_date": job.get("closing_date"),
             "status": job.get("status", "active"),
             "created_at": job.get("created_at"),
-            "updated_at": job.get("updated_at")
+            "updated_at": job.get("updated_at"),
+            "applicant_count": job.get("applicant_count", 0),
+            "applicant_avatars": job.get("applicant_avatars", [])
         }
         
     def _validate_foreign_keys(self, payload) -> None:
@@ -144,24 +151,86 @@ class JobPostService:
         user_id: str, 
         search: str = None, 
         status: str = None, 
-        sort_by: str = "newest", # 🎯 បន្ថែម parameter តម្រៀប
+        sort_by: str = "newest", 
         page: int = 1, 
         limit: int = 10
     ) -> list:
-        """ទាញយកបញ្ជីការងារទាំងអស់ដែលក្រុមហ៊ុននេះបាន Post"""
         user_oid = ObjectId(user_id)
 
         company = await company_profiles_collection.find_one({"user_id": user_oid})
         if not company:
             return []
 
-        # ហៅ Helper មកប្រើ
         query = self._build_job_query(company["_id"], search, status)
         sort_logic = self._build_job_sort_logic(sort_by)
         skip = (page - 1) * limit
 
-        # ប្រើ sort_logic ដែលបានរៀបចំ
-        cursor = job_posts_collection.find(query).sort(sort_logic).skip(skip).limit(limit)
+        # 🟢 ប្រើប្រាស់ Aggregation ដើម្បីទាញទិន្នន័យ Job + ភ្ជាប់ជាមួយ Applicants
+        pipeline = [
+            {"$match": query},
+            # ត្រូវបម្លែង list of tuples ទៅជា dict សម្រាប់ MongoDB aggregation
+            {"$sort": dict(sort_logic)}, 
+            {"$skip": skip},
+            {"$limit": limit},
+            
+            # 1. Join ជាមួយ job_applications 
+            {
+                "$lookup": {
+                    "from": job_applications_collection.name,
+                    "localField": "_id",
+                    "foreignField": "job_id",
+                    "as": "applications"
+                }
+            },
+            
+            # 2. រាប់ចំនួនសរុប និងកាត់យកតែ ៣ នាក់ដំបូង ដើម្បីសន្សំទំហំ
+            {
+                "$addFields": {
+                    "applicant_count": {"$size": "$applications"},
+                    "recent_apps": {"$slice": ["$applications", 3]}
+                }
+            },
+            
+            # 3. Join យក seeker_profiles តែ ៣ នាក់នោះប៉ុណ្ណោះ ដើម្បីយករូប Avatar
+            {
+                "$lookup": {
+                    "from": seeker_profiles_collection.name,
+                    "localField": "recent_apps.seeker_user_id",
+                    "foreignField": "user_id",
+                    "as": "seekers"
+                }
+            },
+            
+            # 4. ទាញយករូប URL និងលុបអ្នកដែលអត់មានរូប (None) ចេញ
+            {
+                "$addFields": {
+                    "applicant_avatars": {
+                        "$filter": {
+                            "input": {
+                                "$map": {
+                                    "input": "$seekers",
+                                    "as": "s",
+                                    "in": "$$s.profile_image_url"
+                                }
+                            },
+                            "as": "url",
+                            "cond": {"$ne": ["$$url", None]}
+                        }
+                    }
+                }
+            },
+            
+            # 5. លុបចោល Field រញ៉េរញ៉ៃដែលលែងប្រើ ដើម្បីឱ្យ Response ដើរលឿន
+            {
+                "$project": {
+                    "applications": 0,
+                    "recent_apps": 0,
+                    "seekers": 0
+                }
+            }
+        ]
+
+        cursor = job_posts_collection.aggregate(pipeline)
         
         jobs = []
         async for job in cursor:
