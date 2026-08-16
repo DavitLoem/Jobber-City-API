@@ -165,13 +165,14 @@ class JobPostService:
         sort_logic = self._build_job_sort_logic(sort_by)
         skip = (page - 1) * limit
 
+        # 🟢 ១. Pipeline នេះខ្លីជាងមុន ដើម្បីទុក Field ឱ្យយើង Print មើល
         pipeline = [
             {"$match": query},
             {"$sort": dict(sort_logic)}, 
             {"$skip": skip},
             {"$limit": limit},
             
-            # 1. Join ជាមួយ job_applications 
+            # Join យកពាក្យសុំការងារ
             {
                 "$lookup": {
                     "from": job_applications_collection.name,
@@ -181,7 +182,7 @@ class JobPostService:
                 }
             },
             
-            # 2. រាប់ចំនួនសរុប និងកាត់យកតែ ៣ នាក់ដំបូង 
+            # កាត់យក ៣ នាក់
             {
                 "$addFields": {
                     "applicant_count": {"$size": "$applications"},
@@ -189,58 +190,13 @@ class JobPostService:
                 }
             },
             
-            # 🟢 3. បំប្លែង seeker_user_id ពី String ទៅ ObjectId ដើម្បីឱ្យ Join ត្រូវគ្នា
-            {
-                "$addFields": {
-                    "recent_seeker_ids": {
-                        "$map": {
-                            "input": "$recent_apps",
-                            "as": "app",
-                            "in": {"$toObjectId": "$$app.seeker_user_id"} 
-                        }
-                    }
-                }
-            },
-            
-            # 🟢 4. Join យក seeker_profiles ដោយប្រើ Array នៃ ObjectIds ដែលទើបបំប្លែង
+            # Join យក Profile បេក្ខជន (សាកល្បង Join ត្រង់ៗ ដោយមិនបាច់បំប្លែង)
             {
                 "$lookup": {
                     "from": seeker_profiles_collection.name,
-                    "localField": "recent_seeker_ids", # ប្រើ Field ថ្មី
+                    "localField": "recent_apps.seeker_user_id",
                     "foreignField": "user_id",
                     "as": "seekers"
-                }
-            },
-            
-            # 5. ទាញយករូប URL និងលុបអ្នកដែលអត់មានរូបចេញ
-            {
-                "$addFields": {
-                    "applicant_avatars": {
-                        "$filter": {
-                            "input": {
-                                "$map": {
-                                    "input": "$seekers",
-                                    "as": "s",
-                                    "in": "$$s.profile_image_url"
-                                }
-                            },
-                            "as": "url",
-                            "cond": {"$and": [
-                                {"$ne": ["$$url", None]}, 
-                                {"$ne": ["$$url", ""]}
-                            ]}
-                        }
-                    }
-                }
-            },
-            
-            # 6. លុបចោល Field រញ៉េរញ៉ៃដែលលែងប្រើ
-            {
-                "$project": {
-                    "applications": 0,
-                    "recent_apps": 0,
-                    "recent_seeker_ids": 0,
-                    "seekers": 0
                 }
             }
         ]
@@ -249,6 +205,30 @@ class JobPostService:
         
         jobs = []
         async for job in cursor:
+            # ====================================================
+            # 🔴 ផ្នែក DEBUG: Print ទិន្នន័យចូលទៅក្នុង Terminal (Console)
+            # ====================================================
+            print(f"\n--- DEBUG JOB: {job.get('title')} ---")
+            
+            apps = job.get('recent_apps', [])
+            print(f"1. Recent Applications: {len(apps)} នាក់")
+            if apps:
+                print(f"   => ឧទាហរណ៍ seeker_user_id: {apps[0].get('seeker_user_id')} (ប្រភេទ: {type(apps[0].get('seeker_user_id'))})")
+            
+            seekers = job.get('seekers', [])
+            print(f"2. Profiles រកឃើញ (Seekers): {len(seekers)} នាក់")
+            
+            avatars = []
+            for seeker in seekers:
+                img_url = seeker.get("profile_image_url")
+                print(f"   => រកឃើញបេក្ខជន: {seeker.get('first_name')} | រូបភាព: {img_url}")
+                if img_url:
+                    avatars.append(img_url)
+            # ====================================================
+
+            # 🟢 ២. យើងចាប់យករូបភាពដោយប្រើ Python សិន ដើម្បីតេស្ត
+            job["applicant_avatars"] = avatars
+            
             jobs.append(self._format_response(job))
 
         return jobs
