@@ -157,7 +157,6 @@ class JobPostService:
     ) -> list:
         user_oid = ObjectId(user_id)
 
-        # ១. រកមើលក្រុមហ៊ុន
         company = await company_profiles_collection.find_one({"user_id": user_oid})
         if not company:
             return []
@@ -166,64 +165,47 @@ class JobPostService:
         sort_logic = self._build_job_sort_logic(sort_by)
         skip = (page - 1) * limit
 
-        # 🟢 ២. ទាញយកបញ្ជីការងារធម្មតា (គ្មាន Aggregation)
-        cursor = job_posts_collection.find(query).sort(sort_logic).skip(skip).limit(limit)
+        # 🟢 ១. ទាញយកការងារធម្មតា (អត់ប្រើ Aggregation)
+        cursor = job_posts_collection.find(query).sort(dict(sort_logic)).skip(skip).limit(limit)
         
         jobs = []
         async for job in cursor:
             job_id = job["_id"]
             
-            # 🟢 ៣. រាប់ចំនួនបេក្ខជនសរុបសម្រាប់ការងារនេះ
-            applicant_count = await job_applications_collection.count_documents({"job_id": job_id})
-            job["applicant_count"] = applicant_count
+            # 🟢 ២. រាប់ចំនួនបេក្ខជនសរុប (Applicant Count)
+            app_count = await job_applications_collection.count_documents({"job_id": job_id})
+            job["applicant_count"] = app_count
             
-            # 🟢 ៤. ទាញយកអ្នកដាក់ពាក្យ ៣ នាក់ចុងក្រោយ ដើម្បីយករូប
+            # 🟢 ៣. ទាញយកបេក្ខជន ៣ នាក់ចុងក្រោយ
             apps_cursor = job_applications_collection.find({"job_id": job_id}).sort("applied_at", -1).limit(3)
             
             avatars = []
             async for app in apps_cursor:
                 seeker_id = app.get("seeker_user_id")
+                
+                # 🟢 ៤. ស្វែងរក Profile ដោយរំពឹងទុក Type ទាំងអស់ (FOOLPROOF SEARCH)
+                profile = None
+                
                 if seeker_id:
-                    # ស្វែងរក Profile ដូចកូដ Debug ដែលដើរ ១០០% មុននេះ
-                    profile = await seeker_profiles_collection.find_one({"user_id": seeker_id})
-                    if profile:
-                        avatars.append(profile.get("profile_image_url") or "")
-                    else:
-                        avatars.append("")
-                        
+                    # ព្យាយាមរកជា ObjectId សិន
+                    if isinstance(seeker_id, str) and ObjectId.is_valid(seeker_id):
+                        profile = await seeker_profiles_collection.find_one({"user_id": ObjectId(seeker_id)})
+                    elif isinstance(seeker_id, ObjectId):
+                        profile = await seeker_profiles_collection.find_one({"user_id": seeker_id})
+                    
+                    # បើរកមិនឃើញសោះ សាកល្បងរកជា String ម្ដងទៀត
+                    if not profile:
+                        profile = await seeker_profiles_collection.find_one({"user_id": str(seeker_id)})
+                
+                # 🟢 ៥. ទាញយករូបភាព
+                if profile and profile.get("profile_image_url"):
+                    avatars.append(profile.get("profile_image_url"))
+                else:
+                    avatars.append("") # អត់រូប បោះ String ទទេ
+                    
             job["applicant_avatars"] = avatars
             
-            # ៥. បញ្ចូលទៅក្នុងបញ្ជីឆ្លើយតប
-            jobs.append(self._format_response(job))
-
-        return jobs
-    
-    async def get_my_job_posts(
-        self, 
-        user_id: str, 
-        search: str = None, 
-        status: str = None, 
-        sort_by: str = "newest", # 🎯 បន្ថែម parameter តម្រៀប
-        page: int = 1, 
-        limit: int = 10
-    ) -> list:
-        """ទាញយកបញ្ជីការងារទាំងអស់ដែលក្រុមហ៊ុននេះបាន Post"""
-        user_oid = ObjectId(user_id)
-
-        company = await company_profiles_collection.find_one({"user_id": user_oid})
-        if not company:
-            return []
-
-        # ហៅ Helper មកប្រើ
-        query = self._build_job_query(company["_id"], search, status)
-        sort_logic = self._build_job_sort_logic(sort_by)
-        skip = (page - 1) * limit
-
-        # ប្រើ sort_logic ដែលបានរៀបចំ
-        cursor = job_posts_collection.find(query).sort(sort_logic).skip(skip).limit(limit)
-        
-        jobs = []
-        async for job in cursor:
+            # ៦. បញ្ចូលទៅបញ្ជីចុងក្រោយ
             jobs.append(self._format_response(job))
 
         return jobs
