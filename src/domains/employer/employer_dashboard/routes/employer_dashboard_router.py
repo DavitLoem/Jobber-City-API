@@ -5,7 +5,7 @@ from src.core.response import APIResponse
 from src.dependencies.dependencies import get_current_user
 from src.domains.employer.employer_dashboard.models.employer_dashboard_model import EmployerDashboardResponse
 from src.domains.employer.employer_dashboard.services import employer_dashboard_service
-from src.core.security import require_employer
+from src.dependencies.dependencies import require_employer
 
 
 router = APIRouter(
