@@ -235,6 +235,38 @@ class JobPostService:
 
         return self._format_response(job)
     
+    async def get_job_status_summary(self, user_id: str) -> dict:
+        """ទាញយកចំនួនការងារសរុបដោយបែងចែកតាម Status (សម្រាប់បង្ហាញលើ Tabs)"""
+        user_oid = ObjectId(user_id)
+        company = await company_profiles_collection.find_one({"user_id": user_oid})
+        if not company:
+            return {"all": 0, "active": 0, "paused": 0, "closed": 0, "draft": 0}
+
+        # Group តាម status និងរាប់ចំនួន
+        pipeline = [
+            {"$match": {"company_id": company["_id"]}},
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+        ]
+        cursor = job_posts_collection.aggregate(pipeline)
+
+        summary = {"all": 0, "active": 0, "paused": 0, "closed": 0, "draft": 0}
+        total = 0
+        
+        async for doc in cursor:
+            status = doc.get("_id", "draft")
+            count = doc.get("count", 0)
+            
+            # បញ្ចូល inactive ទៅក្នុង paused ព្រោះក្នុង UI យើងបង្ហាញថា Paused
+            if status == "inactive":
+                summary["paused"] += count
+            elif status in summary:
+                summary[status] = count
+                
+            total += count
+
+        summary["all"] = total
+        return summary
+    
     async def update_job_post(self, user_id: str, job_id: str, payload: JobPostUpdate) -> dict:
         """មុខងារសម្រាប់កែប្រែការងារចាស់"""
         

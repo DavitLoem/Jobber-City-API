@@ -77,6 +77,14 @@ async def get_job_post_by_id(
         message="Get job post successfully", 
         data=result
     )
+    
+@router.get("/summary/counts", response_model=APIResponse)
+async def get_job_status_summary_route(current_user: dict = Depends(require_employer)):
+    """API សម្រាប់ទាញយកចំនួនការងារសរុប យកទៅបង្ហាញលើ Tabs"""
+    user_id = str(current_user["_id"])
+    result = await job_post_service.get_job_status_summary(user_id)
+    
+    return APIResponse(success=True, message="Summary fetched", data=result)
 
 @router.put("/{job_id}", response_model=APIResponse[JobPostResponse])
 async def update_job_post(
@@ -124,57 +132,4 @@ async def update_job_status_route(
         data=result
     )
     
-from bson import ObjectId
-from src.core.mongo import (
-    job_posts_collection, 
-    job_applications_collection, 
-    seeker_profiles_collection, 
-    company_profiles_collection
-)
     
-@router.get("/debug/check-avatars")
-async def debug_check_avatars(current_user: dict = Depends(get_current_user)):
-    """Route បណ្ដោះអាសន្នសម្រាប់ស្វែងរកមូលហេតុដែលមិនចេញរូប Profile"""
-    user_oid = current_user["_id"]
-    
-    # ១. រកមើលក្រុមហ៊ុន
-    company = await company_profiles_collection.find_one({"user_id": user_oid})
-    if not company:
-        return {"error": "Company not found"}
-        
-    # ២. រកការងារ ១ មកតេស្ត
-    job = await job_posts_collection.find_one({"company_id": company["_id"]})
-    if not job:
-        return {"error": "No jobs found for this company"}
-        
-    # ៣. រក Applications នៃការងារនេះ
-    apps_cursor = job_applications_collection.find({"job_id": job["_id"]})
-    apps = await apps_cursor.to_list(length=5)
-    
-    debug_info = []
-    
-    for app in apps:
-        seeker_id = app.get("seeker_user_id")
-        
-        # ៤. សាកល្បងរក Profile តាម ២ វិធី (ObjectId និង String)
-        profile_by_oid = None
-        if seeker_id and ObjectId.is_valid(str(seeker_id)):
-            profile_by_oid = await seeker_profiles_collection.find_one({"user_id": ObjectId(str(seeker_id))})
-            
-        profile_by_str = await seeker_profiles_collection.find_one({"user_id": str(seeker_id)})
-        
-        # ៥. កត់ត្រាលទ្ធផល
-        debug_info.append({
-            "application_id": str(app["_id"]),
-            "seeker_id_in_app": str(seeker_id),
-            "seeker_id_type_in_app": str(type(seeker_id)),
-            "found_profile_with_ObjectId": True if profile_by_oid else False,
-            "found_profile_with_String": True if profile_by_str else False,
-            "avatar_url_in_profile": profile_by_oid.get("profile_image_url") if profile_by_oid else (profile_by_str.get("profile_image_url") if profile_by_str else "No Avatar")
-        })
-        
-    return {
-        "job_title": job.get("title"),
-        "total_applications_found": len(apps),
-        "detailed_analysis": debug_info
-    }
