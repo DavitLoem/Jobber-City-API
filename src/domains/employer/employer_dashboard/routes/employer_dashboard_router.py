@@ -4,13 +4,13 @@ from typing import Optional
 from src.core.response import APIResponse
 from src.dependencies.dependencies import get_current_user
 from src.domains.employer.employer_dashboard.models.employer_dashboard_model import EmployerDashboardResponse
-from src.domains.employer.employer_dashboard.services import employer_dashboard_service
+from src.domains.employer.employer_dashboard.services.employer_dashboard_service import employer_dashboard_service
 from src.dependencies.dependencies import require_employer
 
 
 router = APIRouter(
     prefix="/api/employer/dashboard",
-    tags=["Employer Dashboard"],
+    tags=["Employer - Dashboard"],
     dependencies=[Depends(require_employer)] 
 )
 

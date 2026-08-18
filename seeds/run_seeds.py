@@ -21,9 +21,9 @@ async def main():
     
     # ហៅ Function បញ្ចូលទិន្នន័យម្តងមួយៗ
     await seed_industries()
-    await seed_provinces()
-    await seed_categories()
-    await seed_districts()
+    # await seed_provinces()
+    # await seed_categories()
+    # await seed_districts()
     await seed_master_data()
     
     print("-" * 40 + "\n🎉 Seeding Completed Successfully!")

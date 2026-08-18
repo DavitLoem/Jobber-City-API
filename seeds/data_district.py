@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from src.core.mongo import districts_collection
 
 # កំណត់ Object ID របស់ភ្នំពេញជាអថេរមួយដើម្បីងាយស្រួលប្រើប្រាស់
-PHNOM_PENH_ID = ObjectId("6a6d5722f7698b4ac44385d6")
+PHNOM_PENH_ID = ObjectId("6a842a42ef640093cb21d735")
 
 districts_data = [
     {"province_id": PHNOM_PENH_ID, "name_en": "Chamkar Mon", "name_km": "ចំការមន", "sort_order": 1, "is_active": True},
