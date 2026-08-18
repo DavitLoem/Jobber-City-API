@@ -3,7 +3,8 @@ from src.core.mongo import (
     job_posts_collection, 
     job_applications_collection, 
     company_profiles_collection,
-    seeker_profiles_collection
+    seeker_profiles_collection,
+    users_collection
 )
 from src.domains.employer.employer_dashboard.models.employer_dashboard_model import (
     EmployerDashboardResponse, 
@@ -149,7 +150,7 @@ class EmployerDashboardService:
         # ---------------------------------------------------------
         recent_applicants = []
         if job_ids:
-            # ស្វែងរក ៥ នាក់ចុងក្រោយ (អត់ខ្វល់ពី Filter ថ្ងៃខែទេ គឺយកថ្មីបំផុត)
+            # ស្វែងរក ៥ នាក់ចុងក្រោយ
             recent_cursor = job_applications_collection.find(
                 {"job_id": {"$in": job_ids}}
             ).sort("applied_at", -1).limit(5)
@@ -157,21 +158,27 @@ class EmployerDashboardService:
             async for app in recent_cursor:
                 seeker_id = app.get("seeker_user_id")
                 
-                # ស្វែងរក Profile (FOOLPROOF SEARCH ដូចកាលជួសជុលរូប Job លើកមុន)
                 profile = None
+                user_account = None 
+                
                 if seeker_id:
                     if isinstance(seeker_id, str) and ObjectId.is_valid(seeker_id):
-                        profile = await seeker_profiles_collection.find_one({"user_id": ObjectId(seeker_id)})
+                        seeker_oid = ObjectId(seeker_id)
                     elif isinstance(seeker_id, ObjectId):
-                        profile = await seeker_profiles_collection.find_one({"user_id": seeker_id})
+                        seeker_oid = seeker_id
+                    else:
+                        seeker_oid = None
                     
-                    if not profile:
-                        profile = await seeker_profiles_collection.find_one({"user_id": str(seeker_id)})
+                    if seeker_oid:
+                        user_account = await users_collection.find_one({"_id": seeker_oid})
+                        profile = await seeker_profiles_collection.find_one({"user_id": seeker_oid})
                 
-                # រៀបចំឈ្មោះ និងរូបភាព
-                first_name = profile.get("first_name", "") if profile else ""
-                last_name = profile.get("last_name", "") if profile else ""
+                # 🟢 រៀបចំឈ្មោះ (យកពី user_account)
+                first_name = user_account.get("first_name", "") if user_account else ""
+                last_name = user_account.get("last_name", "") if user_account else ""
                 full_name = f"{first_name} {last_name}".strip() or "Unknown Candidate"
+                
+                # 🟢 រៀបចំរូបភាព (យកពី profile)
                 avatar_url = profile.get("profile_image_url", "") if profile else ""
                 
                 # បញ្ចូលទៅក្នុងបញ្ជី
