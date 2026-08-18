@@ -176,7 +176,7 @@ class EmployerDashboardService:
                 # 🟢 រៀបចំឈ្មោះ (យកពី user_account)
                 first_name = user_account.get("first_name", "") if user_account else ""
                 last_name = user_account.get("last_name", "") if user_account else ""
-                full_name = f"{first_name} {last_name}".strip() or "Unknown Candidate"
+                full_name = f"{last_name} {first_name}".strip() or "Unknown Candidate"
                 
                 # 🟢 រៀបចំរូបភាព (យកពី profile)
                 avatar_url = profile.get("profile_image_url", "") if profile else ""
