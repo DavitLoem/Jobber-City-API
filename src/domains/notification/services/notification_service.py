@@ -79,6 +79,17 @@ class NotificationService:
 
         # ត្រឡប់ True ប្រសិនបើស្វែងរកឃើញ និងធ្វើការ Update បានជោគជ័យ
         return result.modified_count > 0
+    
+    async def update_fcm_token(self, user_id: str, fcm_token: str) -> bool:
+        """រក្សាទុក FCM Token របស់ User ទៅក្នុង Database"""
+        from bson import ObjectId
+        from src.core.mongo import users_collection 
+        
+        result = await users_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"fcm_token": fcm_token}}
+        )
+        return True # Return True ទោះជាវា Update ចំ Token ដដែលក៏ដោយ
 
 # Create Singleton Instance
 notification_service = NotificationService()

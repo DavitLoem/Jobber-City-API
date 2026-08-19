@@ -19,3 +19,6 @@ class UnreadCountResponse(BaseModel):
 class NotificationListResponse(BaseModel):
     notifications: List[NotificationResponse]
     total: int
+    
+class FCMTokenRequest(BaseModel):
+    fcm_token: str

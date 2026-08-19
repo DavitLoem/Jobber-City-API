@@ -3,7 +3,7 @@ from typing import List
 
 from src.core.response import APIResponse
 from src.domains.notification.services.notification_service import notification_service
-from src.domains.notification.models.notification_model import UnreadCountResponse, NotificationResponse, NotificationListResponse
+from src.domains.notification.models.notification_model import FCMTokenRequest, UnreadCountResponse, NotificationResponse, NotificationListResponse
 from src.dependencies.dependencies import get_current_user, require_mobile_users
 
 router = APIRouter(
@@ -72,5 +72,17 @@ async def mark_single_notification_read(
         )
     except HTTPException as http_e:
         raise http_e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/fcm-token", response_model=APIResponse)
+async def update_user_fcm_token(
+    request: FCMTokenRequest,
+    current_user: dict = Depends(get_current_user) # ការពារសិទ្ធិ
+):
+    try:
+        user_id = str(current_user.get("_id", ""))
+        await notification_service.update_fcm_token(user_id, request.fcm_token)
+        return APIResponse(success=True, message="FCM Token updated successfully", data=None)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
