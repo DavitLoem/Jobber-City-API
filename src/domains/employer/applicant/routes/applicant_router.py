@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from typing import List
 
 from src.core.response import APIResponse
@@ -40,6 +40,23 @@ async def get_job_applicants_route(
     )
     
     return APIResponse(success=True, message="Get applicants successfully", data=result)
+
+@router.get("/applications/{application_id}", response_model=APIResponse)
+async def get_application_detail_route(
+    application_id: str,
+    current_user: dict = Depends(require_employer) # ប្រើ Dependency របស់អ្នកដែលការពារ Role
+):
+    try:
+        user_id = str(current_user["_id"])
+        data = await applicant_service.get_application_detail(
+            employer_user_id=user_id, 
+            application_id=application_id
+        )
+        return APIResponse(success=True, message="Application detail fetched successfully", data=data)
+    except HTTPException as http_e:
+        raise http_e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
 @router.get("/applications/dropdown", response_model=APIResponse)
 async def get_job_filter_dropdown_route(

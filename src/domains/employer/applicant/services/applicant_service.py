@@ -140,6 +140,41 @@ class ApplicantService:
             
         return applicants
     
+    async def get_application_detail(self, employer_user_id: str, application_id: str) -> dict:
+        # ១. ឆែកមើល Company Profile ដើម្បីការពារសុវត្ថិភាព
+        employer_profile = await company_profiles_collection.find_one({"user_id": ObjectId(employer_user_id)})
+        if not employer_profile:
+            raise HTTPException(status_code=403, detail="Employer profile not found.")
+            
+        if not ObjectId.is_valid(application_id):
+            raise HTTPException(status_code=400, detail="Invalid Application ID format.")
+
+        # ២. បង្កើត Pipeline ដើម្បី Join ទិន្នន័យដូចពេលទាញយកបញ្ជីដែរ ប៉ុន្តែយកតែ ១
+        pipeline = [
+            {
+                "$match": {
+                    "_id": ObjectId(application_id),
+                    "company_id": employer_profile["_id"] # ធានាថា Employer នេះជាម្ចាស់ការងារពិតប្រាកដ
+                }
+            },
+            {"$lookup": {"from": job_posts_collection.name, "localField": "job_id", "foreignField": "_id", "as": "job_info"}},
+            {"$unwind": {"path": "$job_info", "preserveNullAndEmptyArrays": True}},
+            {"$lookup": {"from": seeker_profiles_collection.name, "localField": "seeker_user_id", "foreignField": "user_id", "as": "seeker_info"}},
+            {"$unwind": {"path": "$seeker_info", "preserveNullAndEmptyArrays": True}},
+            {"$lookup": {"from": users_collection.name, "localField": "seeker_user_id", "foreignField": "_id", "as": "user_info"}},
+            {"$unwind": {"path": "$user_info", "preserveNullAndEmptyArrays": True}}
+        ]
+        
+        # ៣. ប្រតិបត្តិការ Query 
+        cursor = job_applications_collection.aggregate(pipeline)
+        app_list = await cursor.to_list(length=1)
+        
+        if not app_list:
+            raise HTTPException(status_code=404, detail="Application not found or you don't have access to it.")
+            
+        # ៤. Return ទិន្នន័យចេញដោយប្រើ Format Helper ដែលមានស្រាប់
+        return self._format_applicant_response(app_list[0])
+    
     async def get_employer_job_dropdown_list(self, employer_user_id: str) -> list:
         """
         ទាញយកបញ្ជីការងាររបស់ Employer សម្រាប់បង្ហាញក្នុង Dropdown
