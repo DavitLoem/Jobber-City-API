@@ -63,6 +63,22 @@ class NotificationService:
             {"$set": {"is_read": True}}
         )
         return True
+    
+    async def mark_single_as_read(self, user_id: str, notification_id: str) -> bool:
+        if not ObjectId.is_valid(notification_id):
+            return False
+
+        # ធ្វើការ Update ដោយប្រាកដថា User ID ត្រូវគ្នា (ការពារការ Update ឆ្លងគណនី)
+        result = await notifications_collection.update_one(
+            {
+                "_id": ObjectId(notification_id),
+                "user_id": ObjectId(user_id) 
+            },
+            {"$set": {"is_read": True}}
+        )
+
+        # ត្រឡប់ True ប្រសិនបើស្វែងរកឃើញ និងធ្វើការ Update បានជោគជ័យ
+        return result.modified_count > 0
 
 # Create Singleton Instance
 notification_service = NotificationService()

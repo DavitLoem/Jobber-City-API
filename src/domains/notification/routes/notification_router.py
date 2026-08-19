@@ -47,3 +47,30 @@ async def mark_all_read(current_user: dict = Depends(get_current_user)):
         return APIResponse(success=True, message="Marked all as read", data=success)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@router.put("/{notification_id}/read", response_model=APIResponse)
+async def mark_single_notification_read(
+    notification_id: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        user_id = str(current_user.get("_id", "")) if isinstance(current_user, dict) else str(current_user.id)
+        
+        success = await notification_service.mark_single_as_read(
+            user_id=user_id, 
+            notification_id=notification_id
+        )
+        
+        if not success:
+            # អាចមកពី ID ខុស ឬសារនោះមិនមែនជារបស់គាត់
+            raise HTTPException(status_code=404, detail="Notification not found or you don't have access")
+            
+        return APIResponse(
+            success=True, 
+            message="Notification marked as read successfully", 
+            data=True
+        )
+    except HTTPException as http_e:
+        raise http_e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
