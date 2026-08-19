@@ -52,3 +52,6 @@ job_applications_collection = collections("job_applications")
 # saved jobs
 saved_jobs_collection = db.get_collection("saved_jobs")
 
+# notifications
+notifications_collection = db.get_collection("notifications")
+

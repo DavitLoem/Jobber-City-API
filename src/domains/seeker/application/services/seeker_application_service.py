@@ -10,6 +10,7 @@ from src.core.mongo import (
     
 )
 from src.domains.employer.applicant.schemas.job_application_schema import ApplyJobRequest
+from src.domains.notification.services.notification_service import notification_service
 
 # 🎯 Set the maximum number of applications a seeker can submit per day (24 hours)
 DAILY_APPLICATION_LIMIT = 10 
@@ -21,7 +22,7 @@ class SeekerApplicationService:
         job_oid = ObjectId(job_id)
         now = datetime.now(timezone.utc)
 
-        # 🛡️ លក្ខខណ្ឌ Check Limit រក្សាទុកដូចដើម
+        # 🛡️ លក្ខខណ្ឌ Check Limit រក្សាទុកដូចដើម[cite: 15]
         twenty_four_hours_ago = now - timedelta(days=1)
         recent_applications_count = await job_applications_collection.count_documents({
             "seeker_user_id": seeker_oid,
@@ -39,18 +40,16 @@ class SeekerApplicationService:
         if not seeker_profile:
             raise HTTPException(status_code=403, detail="You must create a profile before you can apply for a job.")
 
-        # 🎯 ១. ទាញយក URL
+        # 🎯 ១. ទាញយក URL[cite: 15]
         final_resume_url = payload.resume_url or seeker_profile.get("resume_url")
         if not final_resume_url:
             raise HTTPException(status_code=400, detail="CV/Resume is required! Please provide a CV link or upload one to your profile.")
 
-        # 🎯 ២. កំណត់ Logic សម្រាប់ទាញយកឈ្មោះឯកសារ (Filename)
+        # 🎯 ២. កំណត់ Logic សម្រាប់ទាញយកឈ្មោះឯកសារ (Filename)[cite: 15]
         final_resume_filename = ""
-        # ប្រសិនបើ Seeker ប្រើប្រាស់ CV ដែលមានក្នុង Profile ស្រាប់
         if final_resume_url == seeker_profile.get("resume_url"):
             final_resume_filename = seeker_profile.get("resume_filename", "Applicant_Resume.pdf")
         else:
-            # ករណីគាត់បោះ Link CV ថ្មីពីខាងក្រៅមក (Custom URL)
             final_resume_filename = "Attached_Resume.pdf"
 
         existing_app = await job_applications_collection.find_one({
@@ -60,19 +59,13 @@ class SeekerApplicationService:
         if existing_app:
             raise HTTPException(status_code=400, detail="You have already applied for this job.")
 
-        # ==========================================
-        # ✅ ការកែសម្រួលបញ្ចូលទិន្នន័យ
-        # ==========================================
         application_data = {
             "job_id": job_oid,
             "company_id": job["company_id"],
             "seeker_user_id": seeker_oid,
             "cover_letter": payload.cover_letter or "",
             "resume_url": final_resume_url,
-            
-            # 🟢 ប្រើអថេរដែលយើងបានរៀបចំ Logic រួចនៅខាងលើ
             "resume_filename": final_resume_filename, 
-            
             "status": "pending",
             "status_history": [{"status": "pending", "date": now}], 
             "interview_schedule": {}, 
@@ -81,12 +74,37 @@ class SeekerApplicationService:
             "updated_at": now
         }
         
-        await job_applications_collection.insert_one(application_data)
+        # 🟢 ២. ចាប់យកលទ្ធផលនៃការបញ្ចូល ដើម្បីយក Application ID
+        result = await job_applications_collection.insert_one(application_data)
+        application_id = str(result.inserted_id)
         
         await job_posts_collection.update_one(
             {"_id": job_oid}, 
             {"$inc": {"applicant_count": 1}}
         )
+
+        # ==========================================
+        # 🟢 ៣. ដំណើរការ Trigger Notification ទៅកាន់ Employer
+        # ==========================================
+        try:
+            # ស្វែងរក Company Profile តាមរយៈ company_id ដែលបានពី job
+            company = await company_profiles_collection.find_one({"_id": job["company_id"]})
+            if company and "user_id" in company:
+                employer_user_id = str(company["user_id"])
+                job_title = job.get("title", "a job")
+                
+                # បាញ់ Notification ទៅ Employer ដោយកំណត់ Type ជា 'new_application'
+                await notification_service.create_notification(
+                    user_id=employer_user_id,
+                    title="New Applicant! 🎉",
+                    message=f"A new candidate has applied for your job post: {job_title}.",
+                    notif_type="new_application",
+                    related_id=application_id
+                )
+        except Exception as e:
+            # ការពារមិនឱ្យ Error ផ្នែក Notification ធ្វើឱ្យរាំងស្ទះដល់ការដាក់ពាក្យ
+            print(f"Failed to send notification to employer: {e}")
+        # ==========================================
 
         return {
             "success": True, 
