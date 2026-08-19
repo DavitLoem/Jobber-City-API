@@ -10,6 +10,7 @@ from src.core.mongo import (
     users_collection
 )
 from src.domains.profile.seeker_profile.services.core_profile_service import helper_format_profile
+from src.domains.notification.services.notification_service import notification_service
 
 class ApplicantService:
     
@@ -314,6 +315,21 @@ class ApplicantService:
         if not updated_app:
             raise HTTPException(status_code=404, detail="Application not found or it does not belong to you.") 
 
+        # ==========================================
+        # បាញ់ Notification ទៅកាន់ Seeker
+        # ==========================================
+        seeker_id = str(updated_app.get("seeker_user_id"))
+        status_formatted = new_status.capitalize()
+        
+        await notification_service.create_notification(
+            user_id=seeker_id,
+            title="Application Updated",
+            message=f"Your job application status has been updated to {status_formatted}.",
+            notif_type="status_update",
+            related_id=str(updated_app["_id"])
+        )
+        # ==========================================
+
         return {"application_id": str(updated_app["_id"]), "new_status": new_status} 
 
     # 🟢 អនុគមន៍ថ្មីសម្រាប់ធ្វើការ Update ទិន្នន័យច្រើនព្រមគ្នាក្នុង Database
@@ -367,6 +383,24 @@ class ApplicantService:
                 "$push": {"status_history": {"status": new_status, "date": now}} 
             }
         )
+        
+        # ==========================================
+        # បាញ់ Notification ទៅគ្រប់ Seeker ដែលពាក់ព័ន្ធ
+        # ==========================================
+        if result.modified_count > 0:
+            # ទាញយកឯកសារដែលត្រូវគ្នា ដើម្បីយក seeker_user_id
+            updated_apps = await job_applications_collection.find({"_id": {"$in": object_ids}}).to_list(length=None)
+            status_formatted = new_status.capitalize()
+            
+            for app in updated_apps:
+                seeker_id = str(app.get("seeker_user_id"))
+                await notification_service.create_notification(
+                    user_id=seeker_id,
+                    title="Application Updated",
+                    message=f"Your job application status has been updated to {status_formatted}.",
+                    notif_type="status_update",
+                    related_id=str(app["_id"])
+                )
 
         # ត្រឡប់ចំនួនដែលរកឃើញ និងចំនួនដែលបាន Update ពិតប្រាកដ
         return {
