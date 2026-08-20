@@ -121,6 +121,9 @@ from src.domains.employer.job_post.routes.job_post_router import router as job_p
 from src.domains.employer.applicant.routes.applicant_router import router as applicant_router
 from src.domains.seeker.job_feed.routes.job_feed_router import router as job_feed_router
 from src.domains.seeker.application.routes.seeker_application_router import router as seeker_application_router
+from src.domains.chat.routes.chat_router import router as chat_router
+from src.domains.chat.routes.chat_ws_router import router as chat_ws_router
+
 from src.domains.seeker.bookmark.routes.bookmark_router import router as bookmark_router
 from src.domains.employer.employer_dashboard.routes.employer_dashboard_router import router as employer_dashboard_router
 from src.domains.notification.routes.notification_router import router as notification_router
@@ -163,6 +166,36 @@ app.include_router(job_post_router)
 app.include_router(applicant_router)
 app.include_router(employer_dashboard_router)
 
+# Chat (Real-time messaging between Seeker & Employer)
+app.include_router(chat_router)
+app.include_router(chat_ws_router)
+
 # Notification Routes
 app.include_router(notification_router)
+
+
+# ==========================================
+# Startup Events
+# ==========================================
+@app.on_event("startup")
+async def create_chat_indexes():
+    """
+    បង្កើត MongoDB Indexes ដែលចាំបាច់សម្រាប់ Chat Feature ពេល Server ចាប់ផ្តើម
+    Motor/PyMongo នឹងរំលងស្វ័យប្រវត្តិបើ Index ដដែលមានស្រាប់ហើយ (Idempotent-safe)
+    """
+    from src.core.mongo import conversations_collection, chat_messages_collection, device_tokens_collection
+
+    # ១. Query លឿនពេលរក Conversation ដែល User ណាមួយជាសមាជិក (Chat List Screen)
+    await conversations_collection.create_index("participant_ids")
+    # ២. Query លឿនពេលរក Conversation រវាងគូ Seeker-Employer ជាក់លាក់ (Get-or-Create)
+    await conversations_collection.create_index([("seeker_id", 1), ("employer_id", 1)], unique=True)
+
+    # ៣. Query លឿនពេលទាញប្រវត្តិសារតាម Conversation ជាមួយ Cursor-based Pagination (_id DESC)
+    await chat_messages_collection.create_index([("conversation_id", 1), ("_id", -1)])
+
+    # ៤. Upsert/Lookup លឿនតាម FCM Token, និងតាម User (ពេលផ្ញើ Push ទៅគ្រប់ Device របស់គាត់)
+    await device_tokens_collection.create_index("fcm_token", unique=True)
+    await device_tokens_collection.create_index("user_id")
+
+
 

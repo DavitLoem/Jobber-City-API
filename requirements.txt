@@ -30,10 +30,12 @@ email-validator
 aiosmtplib
 
 # Templating
-jinja2
+jinja2 
 
 # cv upload
 pdfplumber
 google-genai
 
+# Real-time Chat
+websockets
 firebase-admin
