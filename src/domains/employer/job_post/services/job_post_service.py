@@ -2,7 +2,12 @@ from bson import ObjectId
 from fastapi import HTTPException
 from datetime import datetime, timezone
 
-from src.core.mongo import job_posts_collection, company_profiles_collection
+from src.core.mongo import (
+    job_posts_collection, 
+    company_profiles_collection,
+    job_applications_collection,
+    seeker_profiles_collection  
+)
 
 from src.domains.employer.job_post.models.job_post_model import JobPostModel
 from src.domains.employer.job_post.schemas.job_post_schema import JobPostCreate, JobPostUpdate
@@ -43,7 +48,9 @@ class JobPostService:
             "closing_date": job.get("closing_date"),
             "status": job.get("status", "active"),
             "created_at": job.get("created_at"),
-            "updated_at": job.get("updated_at")
+            "updated_at": job.get("updated_at"),
+            "applicant_count": job.get("applicant_count", 0),
+            "applicant_avatars": job.get("applicant_avatars", [])
         }
         
     def _validate_foreign_keys(self, payload) -> None:
@@ -114,45 +121,91 @@ class JobPostService:
         # ៦. បោះទិន្នន័យដែលទើបតែ Save រួចត្រឡប់ទៅឱ្យ Router វិញ
         return self._format_response(new_job_dict)
     
+    # 🟢 ១. Helper សម្រាប់កសាង Query ស្វែងរក និងត្រង
+    def _build_job_query(self, company_id: ObjectId, search: str, status: str) -> dict:
+        query = {"company_id": company_id}
+        
+        if search:
+            query["title"] = {"$regex": search, "$options": "i"}
+            
+        if status and status.lower() != "all":
+            query["status"] = status.lower()
+            
+        return query
+
+    # 🟢 ២. Helper សម្រាប់រៀបចំលក្ខខណ្ឌតម្រៀប (Sorting)
+    def _build_job_sort_logic(self, sort_by: str) -> list:
+        if sort_by == "oldest":
+            # ចាស់បំផុត: តម្រៀបតាមថ្ងៃបង្កើតពីមុនមកក្រោយ
+            return [("created_at", 1)]
+        elif sort_by == "expiring_soon":
+            # ជិតផុតកំណត់: តម្រៀបតាមថ្ងៃបិទទទួលពាក្យ (closing_date) ជិតមកដល់មុនគេ
+            return [("closing_date", 1)]
+        else:
+            # លំនាំដើម (newest): តម្រៀបតាមថ្ងៃបង្កើតថ្មីបំផុតមុនគេ
+            return [("created_at", -1)]
+
+    # 🟢 ៣. អនុគមន៍មេ (ធ្វើឱ្យខ្លី និងងាយយល់ជាងមុន)
     async def get_my_job_posts(
         self, 
         user_id: str, 
         search: str = None, 
         status: str = None, 
+        sort_by: str = "newest", 
         page: int = 1, 
         limit: int = 10
     ) -> list:
-        """ទាញយកបញ្ជីការងារទាំងអស់ដែលក្រុមហ៊ុននេះបាន Post ព្រមទាំងអាច Search និង Filter បាន"""
         user_oid = ObjectId(user_id)
 
-        # ១. រកមើល Company របស់ Employer
         company = await company_profiles_collection.find_one({"user_id": user_oid})
         if not company:
             return []
 
-        company_id = company["_id"]
-
-        # ២. រៀបចំ Query សម្រាប់ Search និង Filter
-        query = {"company_id": company_id}
-        
-        # ក. ស្វែងរកតាមចំណងជើងការងារ (Title) - មិនប្រកាន់អក្សរតូចធំ (Case-insensitive)
-        if search:
-            query["title"] = {"$regex": search, "$options": "i"}
-            
-        # ខ. ត្រងតាមស្ថានភាព (Status) ឧ. active, inactive, closed, draft
-        if status and status.lower() != "all":
-            query["status"] = status.lower()
-
-        # ៣. គណនាការកាត់ទំព័រ (Pagination)
+        query = self._build_job_query(company["_id"], search, status)
+        sort_logic = self._build_job_sort_logic(sort_by)
         skip = (page - 1) * limit
 
-        # ៤. ទាញយកការងារទាំងអស់តាម Query ខាងលើ 
-        # .sort("created_at", -1) រៀបតាមថ្ងៃ Post ថ្មីបំផុតឱ្យនៅខាងលើគេ
-        cursor = job_posts_collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        # 🟢 ១. ទាញយកការងារធម្មតា (អត់ប្រើ Aggregation)
+        cursor = job_posts_collection.find(query).sort(dict(sort_logic)).skip(skip).limit(limit)
         
-        # ៥. បំប្លែងទិន្នន័យ (Format) ហើយដាក់ចូលក្នុង Array
         jobs = []
         async for job in cursor:
+            job_id = job["_id"]
+            
+            # 🟢 ២. រាប់ចំនួនបេក្ខជនសរុប (Applicant Count)
+            app_count = await job_applications_collection.count_documents({"job_id": job_id})
+            job["applicant_count"] = app_count
+            
+            # 🟢 ៣. ទាញយកបេក្ខជន ៣ នាក់ចុងក្រោយ
+            apps_cursor = job_applications_collection.find({"job_id": job_id}).sort("applied_at", -1).limit(3)
+            
+            avatars = []
+            async for app in apps_cursor:
+                seeker_id = app.get("seeker_user_id")
+                
+                # 🟢 ៤. ស្វែងរក Profile ដោយរំពឹងទុក Type ទាំងអស់ (FOOLPROOF SEARCH)
+                profile = None
+                
+                if seeker_id:
+                    # ព្យាយាមរកជា ObjectId សិន
+                    if isinstance(seeker_id, str) and ObjectId.is_valid(seeker_id):
+                        profile = await seeker_profiles_collection.find_one({"user_id": ObjectId(seeker_id)})
+                    elif isinstance(seeker_id, ObjectId):
+                        profile = await seeker_profiles_collection.find_one({"user_id": seeker_id})
+                    
+                    # បើរកមិនឃើញសោះ សាកល្បងរកជា String ម្ដងទៀត
+                    if not profile:
+                        profile = await seeker_profiles_collection.find_one({"user_id": str(seeker_id)})
+                
+                # 🟢 ៥. ទាញយករូបភាព
+                if profile and profile.get("profile_image_url"):
+                    avatars.append(profile.get("profile_image_url"))
+                else:
+                    avatars.append("") # អត់រូប បោះ String ទទេ
+                    
+            job["applicant_avatars"] = avatars
+            
+            # ៦. បញ្ចូលទៅបញ្ជីចុងក្រោយ
             jobs.append(self._format_response(job))
 
         return jobs
@@ -181,6 +234,38 @@ class JobPostService:
             )
 
         return self._format_response(job)
+    
+    async def get_job_status_summary(self, user_id: str) -> dict:
+        """ទាញយកចំនួនការងារសរុបដោយបែងចែកតាម Status (សម្រាប់បង្ហាញលើ Tabs)"""
+        user_oid = ObjectId(user_id)
+        company = await company_profiles_collection.find_one({"user_id": user_oid})
+        if not company:
+            return {"all": 0, "active": 0, "paused": 0, "closed": 0, "draft": 0}
+
+        # Group តាម status និងរាប់ចំនួន
+        pipeline = [
+            {"$match": {"company_id": company["_id"]}},
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+        ]
+        cursor = job_posts_collection.aggregate(pipeline)
+
+        summary = {"all": 0, "active": 0, "paused": 0, "closed": 0, "draft": 0}
+        total = 0
+        
+        async for doc in cursor:
+            status = doc.get("_id", "draft")
+            count = doc.get("count", 0)
+            
+            # បញ្ចូល inactive ទៅក្នុង paused ព្រោះក្នុង UI យើងបង្ហាញថា Paused
+            if status == "inactive":
+                summary["paused"] += count
+            elif status in summary:
+                summary[status] = count
+                
+            total += count
+
+        summary["all"] = total
+        return summary
     
     async def update_job_post(self, user_id: str, job_id: str, payload: JobPostUpdate) -> dict:
         """មុខងារសម្រាប់កែប្រែការងារចាស់"""

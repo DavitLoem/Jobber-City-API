@@ -38,6 +38,19 @@ async def add_training(user_id: str, data: TrainingRequest) -> dict:
     await _update_completion_percentage(user_oid)
     return train_dict
 
+async def get_training_by_id(user_id: str, train_id: str) -> dict:
+    user_oid = ObjectId(user_id)
+    
+    profile = await seeker_profiles_collection.find_one(
+        {"user_id": user_oid, "trainings.id": train_id},
+        {"trainings": {"$elemMatch": {"id": train_id}}}
+    )
+
+    if not profile or "trainings" not in profile or len(profile["trainings"]) == 0:
+        raise HTTPException(status_code=404, detail="Training not found.")
+
+    return profile["trainings"][0]
+
 async def update_training(user_id: str, train_id: str, data: TrainingRequest) -> dict:
     user_oid = ObjectId(user_id)
     train_dict = data.model_dump(exclude_unset=True)

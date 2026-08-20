@@ -23,10 +23,16 @@ def helper_format_profile(profile: dict) -> dict:
     if profile.get("date_of_birth") and isinstance(profile["date_of_birth"], datetime):
         profile["date_of_birth"] = profile["date_of_birth"].strftime("%Y-%m-%d")
     
+    # 🎯 [Update] បំប្លែងទាំងទីតាំងការងារ និងទីលំនៅបច្ចុប្បន្ន
     if profile.get("province_id"):
         profile["province_id"] = str(profile["province_id"])
     if profile.get("district_id"):
         profile["district_id"] = str(profile["district_id"])
+        
+    if profile.get("address_province_id"):
+        profile["address_province_id"] = str(profile["address_province_id"])
+    if profile.get("address_district_id"):
+        profile["address_district_id"] = str(profile["address_district_id"])
     
     # បំប្លែង Category IDs ពី ObjectId ទៅ String វិញ
     if "expertise_category_ids" in profile:
@@ -35,12 +41,13 @@ def helper_format_profile(profile: dict) -> dict:
     return profile
 
 def calculate_completion_percentage(profile: dict) -> int:
-    """គណនាភាគរយនៃការបំពេញ Profile (ឧទាហរណ៍សាមញ្ញ)"""
+    """គណនាភាគរយនៃការបំពេញ Profile"""
     score = 0
     # ១. ព័ត៌មានផ្ទាល់ខ្លួនមូលដ្ឋាន (30%)
     if profile.get("first_name") and profile.get("last_name"): score += 10
     if profile.get("phone_number") or profile.get("email"): score += 10
-    if profile.get("province_id"): score += 10
+    # 🎯 [Update] ប្រើ address_province_id ជាគោលសម្រាប់ពិន្ទុ Profile Address
+    if profile.get("address_province_id") or profile.get("province_id"): score += 10
     
     # ២. ព័ត៌មានការងារ និងជំនាញ (40%)
     if profile.get("current_position"): score += 10
@@ -97,7 +104,6 @@ async def update_core_profile(user_id: str, data: SeekerCoreProfileUpdateRequest
     
     user_update_payload = {}
     
-    # ប្រើ pop() ដើម្បីទាញយកផង និងលុបចេញពី update_data ផងកុំឱ្យវាសល់ទៅចូល profile
     if "first_name" in update_data:
         user_update_payload["first_name"] = update_data.pop("first_name")
     if "last_name" in update_data:
@@ -112,7 +118,6 @@ async def update_core_profile(user_id: str, data: SeekerCoreProfileUpdateRequest
             {"$set": user_update_payload}
         )
 
-    # ប្រសិនបើមានតែការ Update ឈ្មោះ/Email តែគ្មានអ្វីផ្សេងទៀត
     if not update_data:
         return await get_seeker_profile(user_id)
 
@@ -132,6 +137,7 @@ async def update_core_profile(user_id: str, data: SeekerCoreProfileUpdateRequest
             valid_ids.append(ObjectId(cid))
         update_data["expertise_category_ids"] = valid_ids
 
+    # 🎯 [Update] ត្រួតពិនិត្យ និងបំប្លែង ObjectId សម្រាប់ទីតាំងការងារ
     if update_data.get("province_id"):
         if not ObjectId.is_valid(update_data["province_id"]):
             raise HTTPException(status_code=400, detail="Province ID is not valid")
@@ -141,6 +147,17 @@ async def update_core_profile(user_id: str, data: SeekerCoreProfileUpdateRequest
         if not ObjectId.is_valid(update_data["district_id"]):
             raise HTTPException(status_code=400, detail="District ID is not valid")
         update_data["district_id"] = ObjectId(update_data["district_id"])
+        
+    # 🎯 [Update] ត្រួតពិនិត្យ និងបំប្លែង ObjectId សម្រាប់ទីលំនៅបច្ចុប្បន្ន
+    if update_data.get("address_province_id"):
+        if not ObjectId.is_valid(update_data["address_province_id"]):
+            raise HTTPException(status_code=400, detail="Address Province ID is not valid")
+        update_data["address_province_id"] = ObjectId(update_data["address_province_id"])
+
+    if update_data.get("address_district_id"):
+        if not ObjectId.is_valid(update_data["address_district_id"]):
+            raise HTTPException(status_code=400, detail="Address District ID is not valid")
+        update_data["address_district_id"] = ObjectId(update_data["address_district_id"])
 
     # ឆែកមើលថាតើគាត់មាន Profile ហើយឬនៅ
     existing_profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
@@ -155,7 +172,7 @@ async def update_core_profile(user_id: str, data: SeekerCoreProfileUpdateRequest
             {"$set": update_data}
         )
     else:
-        # បង្កើត Profile ថ្មី (ពេលនេះមិនត្រូវការ first_name និង last_name ក្នុង Model ទៀតទេ)
+        # បង្កើត Profile ថ្មី 
         new_profile_model = SeekerProfileModel(
             user_id=user_oid,
             **update_data
@@ -165,5 +182,5 @@ async def update_core_profile(user_id: str, data: SeekerCoreProfileUpdateRequest
         
         await seeker_profiles_collection.insert_one(new_profile_dict)
 
-    # ត្រឡប់ទិន្នន័យដោយហៅពី get_seeker_profile ដើម្បីប្រាកដថាបានទិន្នន័យពេញលេញ (មានឈ្មោះ និង Email)
+    # ត្រឡប់ទិន្នន័យ
     return await get_seeker_profile(user_id)

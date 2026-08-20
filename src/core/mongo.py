@@ -53,4 +53,9 @@ job_applications_collection = collections("job_applications")
 conversations_collection = collections("conversations")
 chat_messages_collection = collections("chat_messages")
 device_tokens_collection = collections("device_tokens")
+# saved jobs
+saved_jobs_collection = db.get_collection("saved_jobs")
+
+# notifications
+notifications_collection = db.get_collection("notifications")
 

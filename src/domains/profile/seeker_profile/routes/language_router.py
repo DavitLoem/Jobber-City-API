@@ -18,6 +18,16 @@ async def add_language_route(payload: LanguageRequest, current_user: dict = Depe
     
     return APIResponse(success=True, message="Language added successfully", data=result)
 
+@router.get("/{lang_id}", response_model=APIResponse[dict])
+async def get_language_by_id_route(
+    lang_id: str = Path(...),
+    current_user: dict = Depends(require_seeker)
+):
+    user_id = current_user.get("id") or current_user.get("_id")
+    result = await lang_service.get_language_by_id(str(user_id), lang_id)
+    
+    return APIResponse(success=True, message="Language retrieved successfully", data=result)
+
 @router.put("/{lang_id}", response_model=APIResponse[dict])
 async def update_language_route(
     payload: LanguageRequest,

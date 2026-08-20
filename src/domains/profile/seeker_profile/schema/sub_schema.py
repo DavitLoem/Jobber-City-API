@@ -8,7 +8,7 @@ from datetime import date
 class ExperienceRequest(BaseModel):
     job_title: str = Field(..., min_length=2, example="Software Engineer")
     company_name: str = Field(..., min_length=2, example="Tech Corp")
-    start_date: date = Field(..., example="2020-01-15")
+    start_date: date = Field(..., example="2020")
     end_date: Optional[date] = Field(None, description="ទុក None បើកំពុងធ្វើការបច្ចុប្បន្ន")
     is_current_job: bool = Field(default=False)
     description: Optional[str] = Field(None, example="អភិវឌ្ឍន៍ប្រព័ន្ធ Backend...")
@@ -23,8 +23,8 @@ class EducationRequest(BaseModel):
     school_name: str = Field(..., min_length=2, example="Norton University")
     degree: str = Field(..., example="Bachelor's Degree")
     field_of_study: Optional[str] = Field(None, example="Computer Science")
-    start_date: date = Field(..., example="2018-10-01")
-    end_date: Optional[date] = Field(None, example="2022-07-20")
+    start_date: date = Field(..., example="2018")
+    end_date: Optional[date] = Field(None, example="2022")
 
 class EducationResponse(EducationRequest):
     id: str

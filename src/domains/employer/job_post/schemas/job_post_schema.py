@@ -114,4 +114,6 @@ class JobPostResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    applicant_count: int = Field(0, description="ចំនួនអ្នកដាក់ពាក្យសរុប")
+    applicant_avatars: List[str] = Field([], description="រូបភាព Profile របស់បេក្ខជន ៣ នាក់ចុងក្រោយ")
     

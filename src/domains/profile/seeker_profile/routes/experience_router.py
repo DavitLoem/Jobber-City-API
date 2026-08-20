@@ -29,6 +29,22 @@ async def add_experience_route(
         message="Experience added successfully",
         data=result
     )
+    
+@router.get("/{exp_id}", response_model=APIResponse[dict])
+async def get_experience_by_id_route(
+    exp_id: str = Path(..., description="ID របស់បទពិសោធន៍"),
+    current_user: dict = Depends(require_seeker)
+):
+    """ទាញយកព័ត៌មានបទពិសោធន៍ការងារចាស់ (Get Existing Experience by ID)"""
+    user_id = current_user.get("id") or current_user.get("_id")
+    
+    result = await exp_service.get_experience_by_id(str(user_id), exp_id)
+    
+    return APIResponse(
+        success=True,
+        message="Experience retrieved successfully",
+        data=result
+    )
 
 @router.put("/{exp_id}", response_model=APIResponse[dict])
 async def update_experience_route(

@@ -69,3 +69,27 @@ async def get_my_applications_route(
         message="Get my applications successfully", 
         data=result
     )
+    
+@router.get("/applications/{application_id}", response_model=APIResponse)
+async def get_application_detail_route(
+    application_id: str = Path(..., description="ID នៃការដាក់ពាក្យ (Application ID)"),
+    current_user: dict = Depends(require_seeker)
+):
+    """
+    ទាញយកព័ត៌មានលម្អិតនៃការដាក់ពាក្យរបស់ Seeker រួមមាន៖
+    - ប្រវត្តិស្ថានភាព (Timeline)
+    - ព័ត៌មានសម្ភាសន៍ (បើមាន)
+    - Cover Letter និង Feedback
+    """
+    user_id = str(current_user["_id"])
+    
+    result = await application_service.get_application_detail(
+        seeker_user_id=user_id, 
+        application_id=application_id
+    )
+    
+    return APIResponse(
+        success=True, 
+        message="Application details fetched successfully", 
+        data=result
+    )

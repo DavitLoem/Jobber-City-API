@@ -37,6 +37,19 @@ async def add_education(user_id: str, data: EducationRequest) -> dict:
     await _update_completion_percentage(user_oid)
     return edu_dict
 
+async def get_education_by_id(user_id: str, edu_id: str) -> dict:
+    user_oid = ObjectId(user_id)
+    
+    profile = await seeker_profiles_collection.find_one(
+        {"user_id": user_oid, "educations.id": edu_id},
+        {"educations": {"$elemMatch": {"id": edu_id}}}
+    )
+
+    if not profile or "educations" not in profile or len(profile["educations"]) == 0:
+        raise HTTPException(status_code=404, detail="Education not found.")
+
+    return profile["educations"][0]
+
 async def update_education(user_id: str, edu_id: str, data: EducationRequest) -> dict:
     user_oid = ObjectId(user_id)
     edu_dict = data.model_dump(exclude_unset=True)

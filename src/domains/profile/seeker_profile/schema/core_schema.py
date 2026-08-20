@@ -19,8 +19,8 @@ class SeekerCoreProfileUpdateRequest(BaseModel):
     phone_number: Optional[str] = Field(None, example="012345678")
 
     # 🎯 ៣. អាសយដ្ឋាន (Location)
-    province_id: Optional[str] = Field(None, description="ID របស់ខេត្ត/ក្រុង")
-    district_id: Optional[str] = Field(None, description="ID របស់ស្រុក/ខណ្ឌ")
+    address_province_id: Optional[str] = Field(None, description="ID ខេត្ត/ក្រុង នៃទីលំនៅបច្ចុប្បន្ន")
+    address_district_id: Optional[str] = Field(None, description="ID ស្រុក/ខណ្ឌ នៃទីលំនៅបច្ចុប្បន្ន")
     commune: Optional[str] = Field(None, example="Sangkat Boeng Keng Kang 1")
     village: Optional[str] = Field(None, example="Village 1")
     street: Optional[str] = Field(None, example="Street 282")
@@ -49,8 +49,8 @@ class SeekerProfileResponse(BaseModel):
     profile_completion_percentage: int
     onboarding_completed: bool = False
     
-    first_name: str
-    last_name: str
+    first_name: Optional[str]
+    last_name: Optional[str] = None
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     marital_status: Optional[str] = None
@@ -58,9 +58,10 @@ class SeekerProfileResponse(BaseModel):
     current_position: Optional[str] = None
     email: Optional[str] = None
     phone_number: Optional[str] = None
+
     
-    province_id: Optional[str] = None
-    district_id: Optional[str] = None
+    address_province_id: Optional[str] = None
+    address_district_id: Optional[str] = None
     commune: Optional[str] = None
     village: Optional[str] = None
     street: Optional[str] = None
@@ -70,10 +71,14 @@ class SeekerProfileResponse(BaseModel):
     expected_salary_min: Optional[int] = None
     expected_salary_max: Optional[int] = None
     job_type_preferences: List[str] = []
+    province_id: Optional[str] = None
+    district_id: Optional[str] = None
     expertise_category_ids: List[str] = []
     skills: List[str] = []
 
     resume_url: Optional[str] = None
+    resume_filename: Optional[str] = None 
+    resume_public_id: Optional[str] = None 
     portfolio_url: Optional[str] = None
     linkedin_url: Optional[str] = None
     

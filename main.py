@@ -124,6 +124,9 @@ from src.domains.seeker.application.routes.seeker_application_router import rout
 from src.domains.chat.routes.chat_router import router as chat_router
 from src.domains.chat.routes.chat_ws_router import router as chat_ws_router
 
+from src.domains.seeker.bookmark.routes.bookmark_router import router as bookmark_router
+from src.domains.employer.employer_dashboard.routes.employer_dashboard_router import router as employer_dashboard_router
+from src.domains.notification.routes.notification_router import router as notification_router
 
 # =========================
 # Admin Routes
@@ -156,11 +159,12 @@ app.include_router(seeker_training_router)
 app.include_router(seeker_language_router)
 app.include_router(job_feed_router)
 app.include_router(seeker_application_router)
-
+app.include_router(bookmark_router)
 # Employer Routes (បន្ថែមនៅទីនេះពេលដែលបានបង្កើតរួចហើយ)
 app.include_router(company_profile_router)
 app.include_router(job_post_router)
 app.include_router(applicant_router)
+app.include_router(employer_dashboard_router)
 
 # Chat (Real-time messaging between Seeker & Employer)
 app.include_router(chat_router)
@@ -190,4 +194,6 @@ async def create_chat_indexes():
     await device_tokens_collection.create_index("fcm_token", unique=True)
     await device_tokens_collection.create_index("user_id")
 
+# Notification Routes
+app.include_router(notification_router)
 
