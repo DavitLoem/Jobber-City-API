@@ -1,5 +1,7 @@
 from bson import ObjectId
 from datetime import datetime, timezone
+import json
+import os
 
 import firebase_admin
 from firebase_admin import credentials, messaging
@@ -7,8 +9,24 @@ from src.core.mongo import notifications_collection, users_collection
 from src.domains.notification.models.notification_model import NotificationResponse
 
 if not firebase_admin._apps:
-    # បញ្ជាក់ Path ទៅកាន់ឯកសារ JSON របស់អ្នក
-    cred = credentials.Certificate("serviceAccountKey.json") 
+    # ១. សាកល្បងទាញយកពី Environment Variables (សម្រាប់ Railway)
+    firebase_env = os.getenv("FIREBASE_CREDENTIALS")
+    
+    if firebase_env:
+        # បម្លែងអក្សរ String ពី Railway ទៅជា JSON Object វិញ
+        cred_dict = json.loads(firebase_env)
+        cred = credentials.Certificate(cred_dict)
+        print("✅ Loaded Firebase credentials from Environment Variable.")
+    else:
+        # ២. បើគ្មាន Env ទេ គឺទាញយកពី File (សម្រាប់ពេល Run លើកុំព្យូទ័រ Local)
+        # ការពារការវង្វេង Path ដោយថយក្រោយ ៤ កម្រិត (services -> notification -> domains -> src -> Root)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.abspath(os.path.join(current_dir, "../../../.."))
+        file_path = os.path.join(root_dir, "serviceAccountKey.json")
+        
+        cred = credentials.Certificate(file_path)
+        print("✅ Loaded Firebase credentials from Local JSON file.")
+        
     firebase_admin.initialize_app(cred)
 
 class NotificationService:
