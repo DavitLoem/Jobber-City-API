@@ -318,16 +318,19 @@ class ApplicantService:
         # ==========================================
         # បាញ់ Notification ទៅកាន់ Seeker
         # ==========================================
-        seeker_id = str(updated_app.get("seeker_user_id"))
-        status_formatted = new_status.capitalize()
-        
-        await notification_service.create_notification(
-            user_id=seeker_id,
-            title="Application Updated",
-            message=f"Your job application status has been updated to {status_formatted}.",
-            notif_type="status_update",
-            related_id=str(updated_app["_id"])
-        )
+        try:
+            seeker_id = str(updated_app.get("seeker_user_id"))
+            status_formatted = new_status.capitalize()
+            
+            await notification_service.create_notification(
+                user_id=seeker_id,
+                title="Application Updated",
+                message=f"Your job application status has been updated to {status_formatted}.",
+                notif_type="status_update",
+                related_id=str(updated_app["_id"])
+            )
+        except Exception as e:
+            print(f"❌ Failed to send notification to seeker: {e}")
         # ==========================================
 
         return {"application_id": str(updated_app["_id"]), "new_status": new_status} 
@@ -387,20 +390,26 @@ class ApplicantService:
         # ==========================================
         # បាញ់ Notification ទៅគ្រប់ Seeker ដែលពាក់ព័ន្ធ
         # ==========================================
-        if result.modified_count > 0:
+        print(f"📊 Bulk Update - Matched: {result.matched_count}, Modified: {result.modified_count}")
+        
+        # ដូរពី modified_count មក matched_count វិញ ដើម្បីធានាថាឱ្យតែរកឃើញគឺបាញ់សារ (ទោះជា status ចាស់ក៏ដោយ សម្រាប់ពេលតេស្ត)
+        if result.matched_count > 0: 
             # ទាញយកឯកសារដែលត្រូវគ្នា ដើម្បីយក seeker_user_id
             updated_apps = await job_applications_collection.find({"_id": {"$in": object_ids}}).to_list(length=None)
             status_formatted = new_status.capitalize()
             
             for app in updated_apps:
-                seeker_id = str(app.get("seeker_user_id"))
-                await notification_service.create_notification(
-                    user_id=seeker_id,
-                    title="Application Updated",
-                    message=f"Your job application status has been updated to {status_formatted}.",
-                    notif_type="status_update",
-                    related_id=str(app["_id"])
-                )
+                try:
+                    seeker_id = str(app.get("seeker_user_id"))
+                    await notification_service.create_notification(
+                        user_id=seeker_id,
+                        title="Application Updated",
+                        message=f"Your job application status has been updated to {status_formatted}.",
+                        notif_type="status_update",
+                        related_id=str(app["_id"])
+                    )
+                except Exception as e:
+                    print(f"❌ Failed to send notification for app {app.get('_id')}: {e}")
 
         # ត្រឡប់ចំនួនដែលរកឃើញ និងចំនួនដែលបាន Update ពិតប្រាកដ
         return {

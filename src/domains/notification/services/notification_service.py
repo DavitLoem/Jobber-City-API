@@ -1,15 +1,24 @@
 from bson import ObjectId
 from datetime import datetime, timezone
-from src.core.mongo import notifications_collection
+
+import firebase_admin
+from firebase_admin import credentials, messaging
+from src.core.mongo import notifications_collection, users_collection
 from src.domains.notification.models.notification_model import NotificationResponse
+
+if not firebase_admin._apps:
+    # បញ្ជាក់ Path ទៅកាន់ឯកសារ JSON របស់អ្នក
+    cred = credentials.Certificate("serviceAccountKey.json") 
+    firebase_admin.initialize_app(cred)
 
 class NotificationService:
 
     # 🟢 ១. មុខងារសម្រាប់បញ្ជាបង្កើត Notification (Trigger)
     async def create_notification(self, user_id: str, title: str, message: str, notif_type: str, related_id: str = None) -> bool:
         """
-        អនុគមន៍កណ្តាលសម្រាប់បង្កើត Notification ថ្មី (ហៅដោយ Service ផ្សេងៗ)
+        អនុគមន៍កណ្តាលសម្រាប់បង្កើត Notification ថ្មី និងបាញ់ Push Notification (FCM)
         """
+        # ផ្នែកទី ១៖ រក្សាទុកចូលក្នុង MongoDB (ដូចដើម)
         new_notif = {
             "user_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id,
             "title": title,
@@ -20,6 +29,38 @@ class NotificationService:
             "created_at": datetime.now(timezone.utc)
         }
         result = await notifications_collection.insert_one(new_notif)
+
+        # ផ្នែកទី ២៖ បាញ់ Push Notification ទៅកាន់ Firebase
+        try:
+            # ទាញយក Profile របស់ User ដើម្បីយក fcm_token
+            user_oid = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
+            user_doc = await users_collection.find_one({"_id": user_oid})
+            
+            if user_doc and "fcm_token" in user_doc:
+                fcm_token = user_doc["fcm_token"]
+                
+                # រៀបចំទម្រង់សារដែលត្រូវផ្ញើ
+                fcm_message = messaging.Message(
+                    notification=messaging.Notification(
+                        title=title,
+                        body=message,
+                    ),
+                    data={
+                        "type": notif_type, 
+                        "related_id": str(related_id) if related_id else ""
+                    },
+                    token=fcm_token, # បញ្ជូនទៅកាន់ឧបករណ៍នេះ
+                )
+                
+                # បញ្ជាឱ្យ Firebase ផ្ញើសារ
+                messaging.send(fcm_message)
+                print(f"✅ Successfully sent FCM to user: {user_id}")
+            else:
+                print(f"⚠️ User {user_id} does not have an FCM token.")
+                
+        except Exception as e:
+            print(f"❌ Error sending FCM notification: {e}")
+
         return result.acknowledged
 
     # 🟢 ២. មុខងាររាប់ចំនួនសារដែលមិនទាន់អាន (សម្រាប់ចំណុចក្រហមលើកណ្តឹង)
@@ -83,13 +124,15 @@ class NotificationService:
     async def update_fcm_token(self, user_id: str, fcm_token: str) -> bool:
         """រក្សាទុក FCM Token របស់ User ទៅក្នុង Database"""
         from bson import ObjectId
-        from src.core.mongo import users_collection 
+        from src.core.mongo import users_collection
         
         result = await users_collection.update_one(
             {"_id": ObjectId(user_id)},
             {"$set": {"fcm_token": fcm_token}}
         )
-        return True # Return True ទោះជាវា Update ចំ Token ដដែលក៏ដោយ
+        
+        # 🟢 ប្រើប្រាស់ result.matched_count ដើម្បីបញ្ជាក់ថាពិតជារកឃើញគណនីមែន
+        return result.matched_count > 0
 
 # Create Singleton Instance
 notification_service = NotificationService()
