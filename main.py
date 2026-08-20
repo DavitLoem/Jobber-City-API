@@ -170,6 +170,9 @@ app.include_router(employer_dashboard_router)
 app.include_router(chat_router)
 app.include_router(chat_ws_router)
 
+# Notification Routes
+app.include_router(notification_router)
+
 
 # ==========================================
 # Startup Events
@@ -194,6 +197,5 @@ async def create_chat_indexes():
     await device_tokens_collection.create_index("fcm_token", unique=True)
     await device_tokens_collection.create_index("user_id")
 
-# Notification Routes
-app.include_router(notification_router)
+
 
