@@ -19,11 +19,11 @@ async def lifespan(app: FastAPI):
     # --- កូដនៅទីនេះនឹងដំណើរការនៅពេល Server ចាប់ផ្តើម (Startup) ---
     from src.core.mongo import conversations_collection, chat_messages_collection, device_tokens_collection
 
-    await conversations_collection.create_index("participant_ids")
-    await conversations_collection.create_index([("seeker_id", 1), ("employer_id", 1)], unique=True)
-    await chat_messages_collection.create_index([("conversation_id", 1), ("_id", -1)])
-    await device_tokens_collection.create_index("fcm_token", unique=True)
-    await device_tokens_collection.create_index("user_id")
+    # await conversations_collection.create_index("participant_ids")
+    # await conversations_collection.create_index([("seeker_id", 1), ("employer_id", 1)], unique=True)
+    # await chat_messages_collection.create_index([("conversation_id", 1), ("_id", -1)])
+    # await device_tokens_collection.create_index("fcm_token", unique=True)
+    # await device_tokens_collection.create_index("user_id")
     
     yield
 
