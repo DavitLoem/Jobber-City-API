@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 import os
@@ -13,12 +14,26 @@ load_dotenv()
 app_env = os.getenv("APP_ENV", "local") # ដាក់ "local" ជា Default បើអត់មាន
 show_docs = app_env in ["local", "staging"]
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- កូដនៅទីនេះនឹងដំណើរការនៅពេល Server ចាប់ផ្តើម (Startup) ---
+    from src.core.mongo import conversations_collection, chat_messages_collection, device_tokens_collection
+
+    await conversations_collection.create_index("participant_ids")
+    await conversations_collection.create_index([("seeker_id", 1), ("employer_id", 1)], unique=True)
+    await chat_messages_collection.create_index([("conversation_id", 1), ("_id", -1)])
+    await device_tokens_collection.create_index("fcm_token", unique=True)
+    await device_tokens_collection.create_index("user_id")
+    
+    yield
+
 app = FastAPI(
     title="Jobber City API",
     description="API for Job Seeker and Employer Mobile App & Admin Dashboard",
     docs_url="/docs" if show_docs else None,
     redoc_url="/redoc" if show_docs else None,
-    swagger_ui_parameters={"docExpansion": "none"}
+    swagger_ui_parameters={"docExpansion": "none"},
+    lifespan=lifespan
 )
 
 # កំណត់ថាអ្នកណាខ្លះ (Domain ណាខ្លះ) អាចហៅ API នេះបាន
@@ -174,28 +189,6 @@ app.include_router(chat_ws_router)
 app.include_router(notification_router)
 
 
-# ==========================================
-# Startup Events
-# ==========================================
-@app.on_event("startup")
-async def create_chat_indexes():
-    """
-    បង្កើត MongoDB Indexes ដែលចាំបាច់សម្រាប់ Chat Feature ពេល Server ចាប់ផ្តើម
-    Motor/PyMongo នឹងរំលងស្វ័យប្រវត្តិបើ Index ដដែលមានស្រាប់ហើយ (Idempotent-safe)
-    """
-    from src.core.mongo import conversations_collection, chat_messages_collection, device_tokens_collection
-
-    # ១. Query លឿនពេលរក Conversation ដែល User ណាមួយជាសមាជិក (Chat List Screen)
-    await conversations_collection.create_index("participant_ids")
-    # ២. Query លឿនពេលរក Conversation រវាងគូ Seeker-Employer ជាក់លាក់ (Get-or-Create)
-    await conversations_collection.create_index([("seeker_id", 1), ("employer_id", 1)], unique=True)
-
-    # ៣. Query លឿនពេលទាញប្រវត្តិសារតាម Conversation ជាមួយ Cursor-based Pagination (_id DESC)
-    await chat_messages_collection.create_index([("conversation_id", 1), ("_id", -1)])
-
-    # ៤. Upsert/Lookup លឿនតាម FCM Token, និងតាម User (ពេលផ្ញើ Push ទៅគ្រប់ Device របស់គាត់)
-    await device_tokens_collection.create_index("fcm_token", unique=True)
-    await device_tokens_collection.create_index("user_id")
 
 
 
