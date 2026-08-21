@@ -18,6 +18,19 @@ db = client[mongo_db_name]
 def collections(name: str):
     return db[name]
 
+# ២. ការតភ្ជាប់ Database ថ្មី (Chat DB)
+# ==========================================
+chat_mongo_url = os.getenv("CHAT_MONGO_URL")
+chat_db_name = "jobber_chat_db" # កំណត់ឈ្មោះ DB សម្រាប់ Chat
+
+if chat_mongo_url:
+    chat_client = MongoClient(chat_mongo_url)
+    chat_db = chat_client[chat_db_name]
+    print("✅ Chat Database Connected Successfully!")
+else:
+    # ករណីភ្លេចដាក់ Env វាជួយការពារកុំឱ្យ Error ដោយប្រើ DB ចាស់សិន
+    chat_db = db
+
 # ==========================================
 # 🎯 ប្រកាស Collection ទាំងអស់នៅទីនេះតែម្តង!
 # ==========================================
@@ -50,8 +63,8 @@ job_posts_collection = collections("job_posts")
 job_applications_collection = collections("job_applications")
 
 # Real-time Chat (Seeker <-> Employer)
-conversations_collection = collections("conversations")
-chat_messages_collection = collections("chat_messages")
+conversations_collection = chat_db.get_collection("conversations")
+chat_messages_collection = chat_db.get_collection("chat_messages")
 device_tokens_collection = collections("device_tokens")
 # saved jobs
 saved_jobs_collection = db.get_collection("saved_jobs")
