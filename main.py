@@ -181,7 +181,7 @@ app.include_router(job_post_router)
 app.include_router(applicant_router)
 app.include_router(employer_dashboard_router)
 
-# Chat (Real-time messaging between Seeker & Employer)
+# Chat 
 app.include_router(chat_router)
 app.include_router(chat_ws_router)
 

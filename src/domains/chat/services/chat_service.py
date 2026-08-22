@@ -39,8 +39,8 @@ class ChatService:
                 avatar_url = company.get("logo_url", avatar_url)
         elif role == "seeker":
             seeker = await seeker_profiles_collection.find_one({"user_id": user_id})
-            if seeker and seeker.get("image_url"):
-                avatar_url = seeker.get("image_url")
+            if seeker and seeker.get("profile_image_url"):
+                avatar_url = seeker.get("profile_image_url")
 
         return {
             "user_id": str(user_id),
