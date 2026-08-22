@@ -118,3 +118,17 @@ async def remove_device_token(
     """លុប Device Token ចោល (គួរហៅពេល Logout ដើម្បីកុំឱ្យ Device នេះបន្តទទួល Notification)"""
     await chat_service.remove_device_token(payload.fcm_token)
     return APIResponse(success=True, message="Device token removed")
+
+@router.delete("/conversations/{conversation_id}/messages/{message_id}")
+async def delete_chat_message(
+    conversation_id: str,
+    message_id: str,
+    type: str = Query(..., description="'me' or 'everyone'"),
+    current_user: dict = Depends(get_current_user)
+):
+    return await chat_service.delete_message(
+        conversation_id=conversation_id,
+        message_id=message_id,
+        user_id=str(current_user["_id"]),
+        delete_type=type
+    )

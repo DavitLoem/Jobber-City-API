@@ -57,6 +57,7 @@ class ChatService:
         # ធម្មតា (មិនចេះបំប្លែង datetime ទេ) — បើមិនបំប្លែងទុកជាមុន Server នឹង Raise
         # TypeError ស្ងាត់ៗពេល Broadcast ហើយ Connection នោះនឹងត្រូវសម្គាល់ខុសថា "Dead"។
         created_at = msg.get("created_at")
+        is_deleted = msg.get("is_deleted_for_everyone", False)
         return {
             "id": str(msg["_id"]),
             "conversation_id": str(msg["conversation_id"]),
@@ -68,6 +69,7 @@ class ChatService:
             "status": msg.get("status", "sent"),
             "client_temp_id": msg.get("client_temp_id"),
             "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else created_at,
+            "is_deleted_for_everyone": is_deleted,
         }
 
     async def _format_conversation(self, convo: dict, current_user_id: str) -> dict:
@@ -176,7 +178,11 @@ class ChatService:
     async def get_messages(self, conversation_id: str, user_id: str, before: Optional[str], limit: int = 30) -> dict:
         await self._assert_participant(conversation_id, user_id)
 
-        query = {"conversation_id": ObjectId(conversation_id)}
+        query = {
+            "conversation_id": ObjectId(conversation_id),
+            "deleted_for": {"$ne": ObjectId(user_id)} 
+        }
+        
         if before:
             if not ObjectId.is_valid(before):
                 raise HTTPException(status_code=400, detail="Invalid cursor.")
@@ -322,6 +328,87 @@ class ChatService:
 
     async def remove_device_token(self, fcm_token: str) -> dict:
         await device_tokens_collection.delete_one({"fcm_token": fcm_token})
+        return {"success": True}
+    
+    async def delete_message(self, conversation_id: str, message_id: str, user_id: str, delete_type: str) -> dict:
+        """
+        delete_type អាចមានតម្លៃ: 'me' ឬ 'everyone'
+        """
+        convo = await self._assert_participant(conversation_id, user_id)
+
+        if not ObjectId.is_valid(message_id):
+            raise HTTPException(status_code=400, detail="Invalid message ID")
+
+        msg = await chat_messages_collection.find_one({
+            "_id": ObjectId(message_id),
+            "conversation_id": ObjectId(conversation_id)
+        })
+        
+        if not msg:
+            raise HTTPException(status_code=404, detail="Message not found")
+
+        # =========================================
+        # 🔴 ជម្រើសទី ១: Delete for Everyone
+        # =========================================
+        if delete_type == "everyone":
+            # លក្ខខណ្ឌ: អាចលុបបានតែសារខ្លួនឯងប៉ុណ្ណោះ
+            if str(msg["sender_id"]) != user_id:
+                raise HTTPException(status_code=403, detail="You can only delete your own messages for everyone")
+
+            # ១. Update Database (Clear អត្ថបទចោល)
+            await chat_messages_collection.update_one(
+                {"_id": msg["_id"]},
+                {"$set": {
+                    "is_deleted_for_everyone": True,
+                    "content": "",
+                    "attachment_url": None
+                }}
+            )
+
+            # ២. បើសារនេះជាសារចុងក្រោយគេ (Last Message Preview) យើងត្រូវដូរអក្សរនៅខាងក្រៅ List ដែរ
+            if convo.get("last_message_at") == msg.get("created_at"):
+                 await conversations_collection.update_one(
+                     {"_id": convo["_id"]},
+                     {"$set": {"last_message": "🚫 This message was deleted"}}
+                 )
+
+            # ៣. បាញ់ WebSocket ទៅកាន់អ្នកទាំងពីរ ដើម្បី Update UI ភ្លាមៗ (Real-time)
+            payload = {
+                "type": "message_deleted",
+                "data": {
+                    "message_id": message_id,
+                    "conversation_id": conversation_id,
+                    "delete_type": "everyone"
+                }
+            }
+            # ផ្ញើទៅទាំងសងខាង
+            for p_id in convo["participant_ids"]:
+                await connection_manager.send_to_user(str(p_id), payload)
+
+        # =========================================
+        # 🔵 ជម្រើសទី ២: Delete for Me
+        # =========================================
+        elif delete_type == "me":
+            # ១. បន្ថែម ID របស់យើងទៅក្នុង Array deleted_for
+            await chat_messages_collection.update_one(
+                {"_id": msg["_id"]},
+                {"$addToSet": {"deleted_for": ObjectId(user_id)}}
+            )
+
+            # ២. បាញ់ WebSocket ទៅកាន់តែឧបករណ៍របស់យើងផ្ទាល់ (Sync ពេលមានទូរស័ព្ទ ២)
+            payload = {
+                "type": "message_deleted",
+                "data": {
+                    "message_id": message_id,
+                    "conversation_id": conversation_id,
+                    "delete_type": "me"
+                }
+            }
+            await connection_manager.send_to_user(user_id, payload)
+
+        else:
+            raise HTTPException(status_code=400, detail="Invalid delete type. Must be 'me' or 'everyone'")
+
         return {"success": True}
 
 
