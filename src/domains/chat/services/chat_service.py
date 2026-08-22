@@ -58,6 +58,9 @@ class ChatService:
         # TypeError ស្ងាត់ៗពេល Broadcast ហើយ Connection នោះនឹងត្រូវសម្គាល់ខុសថា "Dead"។
         created_at = msg.get("created_at")
         is_deleted = msg.get("is_deleted_for_everyone", False)
+        
+        if created_at and hasattr(created_at, 'tzinfo') and created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
         return {
             "id": str(msg["_id"]),
             "conversation_id": str(msg["conversation_id"]),
