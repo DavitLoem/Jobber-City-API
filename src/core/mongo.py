@@ -66,6 +66,10 @@ job_applications_collection = collections("job_applications")
 conversations_collection = chat_db.get_collection("conversations")
 chat_messages_collection = chat_db.get_collection("chat_messages")
 device_tokens_collection = collections("device_tokens")
+
+# interview 
+interview_collection = collections("interviews")
+
 # saved jobs
 saved_jobs_collection = db.get_collection("saved_jobs")
 
