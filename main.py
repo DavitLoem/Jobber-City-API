@@ -138,6 +138,7 @@ from src.domains.seeker.job_feed.routes.job_feed_router import router as job_fee
 from src.domains.seeker.application.routes.seeker_application_router import router as seeker_application_router
 from src.domains.chat.routes.chat_router import router as chat_router
 from src.domains.chat.routes.chat_ws_router import router as chat_ws_router
+from src.domains.interview.routes.interview_router import router as interview_router
 
 from src.domains.seeker.bookmark.routes.bookmark_router import router as bookmark_router
 from src.domains.employer.employer_dashboard.routes.employer_dashboard_router import router as employer_dashboard_router
@@ -184,6 +185,8 @@ app.include_router(employer_dashboard_router)
 # Chat 
 app.include_router(chat_router)
 app.include_router(chat_ws_router)
+app.include_router(interview_router)
+
 
 # Notification Routes
 app.include_router(notification_router)
