@@ -27,6 +27,11 @@ class JobFeedService:
             "salary_period": job_doc.get("salary_period", ""),
             "company_name": job_doc.get("company", {}).get("company_name", "Unknown Company"),
             "logo_url": job_doc.get("company", {}).get("logo_url"),
+            "employer_user_id": (
+                str(job_doc["company"]["user_id"])
+                if job_doc.get("company", {}).get("user_id")
+                else None
+            ),
             "location": location,
             "employment_type": job_doc.get("employment_type", {}).get("name", "N/A"),
             "work_type": job_doc.get("work_type", {}).get("name", "N/A"),

@@ -4,7 +4,7 @@ from typing import List
 from src.core.response import APIResponse
 from src.dependencies.dependencies import require_employer # 🎯 ទាមទារសិទ្ធិ Employer
 from src.domains.employer.applicant.services.applicant_service import ApplicantService
-from src.domains.employer.applicant.schemas.job_application_schema import UpdateApplicationStatus, ApplicantResponse
+from src.domains.employer.applicant.schemas.job_application_schema import UpdateApplicationStatus, ApplicantResponse, SeekerDirectoryPage, JobDropdownItem
 
 applicant_service = ApplicantService()
 
@@ -52,6 +52,44 @@ async def update_application_status_route(
     return APIResponse(
         success=True, 
         message=f"Application status updated to {payload.status}", 
+        data=result
+    )
+
+@router.get("/applications/dropdown", response_model=APIResponse[List[JobDropdownItem]])
+async def get_job_dropdown_route(
+    current_user: dict = Depends(require_employer)
+):
+    """ទាញយកបញ្ជី Job ទាំងអស់របស់ក្រុមហ៊ុននេះ សម្រាប់ Dropdown ជ្រើសរើសនៅលើអេក្រង់ Candidates"""
+
+    user_id = str(current_user["_id"])
+    result = await applicant_service.get_job_dropdown(employer_user_id=user_id)
+
+    return APIResponse(
+        success=True,
+        message="Get job dropdown successfully",
+        data=result
+    )
+
+@router.get("/seekers", response_model=APIResponse[SeekerDirectoryPage])
+async def get_all_seekers_route(
+    search: str = Query(None, description="ស្វែងរកតាមឈ្មោះ Seeker"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=50),
+    current_user: dict = Depends(require_employer)
+):
+    """ទាញយកបញ្ជីគណនី Seeker ទាំងអស់ក្នុងប្រព័ន្ធ (មិនកំណត់តែ Applicant) សម្រាប់ Employer ចាប់ផ្ដើម Chat ថ្មី"""
+
+    user_id = str(current_user["_id"])
+    result = await applicant_service.get_all_seekers(
+        employer_user_id=user_id,
+        search=search,
+        page=page,
+        limit=limit
+    )
+
+    return APIResponse(
+        success=True,
+        message="Get all seekers successfully",
         data=result
     )
 

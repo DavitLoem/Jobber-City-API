@@ -5,7 +5,10 @@ from fastapi import HTTPException, status
 
 from src.core.mongo import seeker_profiles_collection
 from src.domains.profile.seeker_profile.schema.sub_schema import ExperienceRequest
-from src.domains.profile.seeker_profile.services.core_profile_service import calculate_completion_percentage
+from src.domains.profile.seeker_profile.services.core_profile_service import (
+    calculate_completion_percentage,
+    ensure_seeker_profile_exists,
+)
 
 
 # ==========================================
@@ -39,7 +42,10 @@ async def add_experience(user_id: str, data: ExperienceRequest) -> dict:
     if isinstance(exp_dict.get("end_date"), date):
         exp_dict["end_date"] = datetime.combine(exp_dict["end_date"], datetime.min.time()).replace(tzinfo=timezone.utc)
 
-    # ៣. ប្រើ $push ដើម្បីញាត់ចូលទៅក្នុង Array ឈ្មោះ "experiences"
+    # ៣. ធានាថា Profile មានស្រាប់ជាមុនសិន (បង្កើតទទេស្វ័យប្រវត្តិបើមិនទាន់មាន)
+    await ensure_seeker_profile_exists(user_oid)
+
+    # ៤. ប្រើ $push ដើម្បីញាត់ចូលទៅក្នុង Array ឈ្មោះ "experiences"
     result = await seeker_profiles_collection.update_one(
         {"user_id": user_oid},
         {"$push": {"experiences": exp_dict}}

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ full_name }} - CV</title>
+<style>
+    @page {
+        size: A4;
+        margin: 0;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        color: #2b2f38;
+        font-size: 10.5pt;
+        line-height: 1.5;
+    }
+
+    .header {
+        background: linear-gradient(120deg, #7c3aed, #4f46e5);
+        color: #ffffff;
+        padding: 32px 34px 26px 34px;
+        display: flex;
+        align-items: center;
+    }
+    .avatar {
+        width: 82px;
+        height: 82px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid rgba(255,255,255,0.6);
+        margin-right: 20px;
+    }
+    .avatar-placeholder {
+        width: 82px;
+        height: 82px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26pt;
+        margin-right: 20px;
+        color: #ffffff;
+    }
+    .header h1 { font-size: 19pt; margin: 0 0 3px 0; }
+    .header .role { font-size: 11pt; opacity: 0.9; margin-bottom: 8px; }
+    .header .contact-line { font-size: 8.5pt; opacity: 0.9; }
+    .header .contact-line span:not(:last-child)::after { content: "   •   "; }
+
+    .body {
+        padding: 24px 34px 30px 34px;
+    }
+    .summary {
+        color: #4b5563;
+        margin-bottom: 20px;
+        padding: 12px 16px;
+        background: #f5f3ff;
+        border-left: 3px solid #7c3aed;
+        border-radius: 4px;
+        font-size: 10pt;
+    }
+
+    .section { margin-bottom: 18px; }
+    .section-title {
+        font-size: 11.5pt;
+        font-weight: bold;
+        color: #4f46e5;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+    .section-title::before { content: "— "; }
+
+    .entry { margin-bottom: 12px; padding-left: 12px; border-left: 2px solid #ede9fe; }
+    .entry-top { display: flex; justify-content: space-between; align-items: baseline; }
+    .entry-title { font-weight: bold; font-size: 10.5pt; color: #1f2937; }
+    .entry-sub { color: #6b7280; font-size: 9.5pt; margin-bottom: 3px; }
+    .entry-date {
+        color: #7c3aed;
+        font-size: 8.5pt;
+        white-space: nowrap;
+        font-weight: bold;
+    }
+    .entry-desc { color: #4b5563; font-size: 9.5pt; margin-top: 3px; }
+
+    .two-col { display: flex; gap: 24px; }
+    .two-col > div { flex: 1; }
+
+    .pill {
+        display: inline-block;
+        background: #ede9fe;
+        color: #5b21b6;
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: 8.5pt;
+        margin: 0 4px 6px 0;
+    }
+    .lang-row { font-size: 9.5pt; margin-bottom: 4px; color: #374151; }
+    .lang-row b { color: #1f2937; }
+
+    .personal-grid {
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 9pt;
+        color: #4b5563;
+    }
+    .personal-grid > div { width: 50%; margin-bottom: 6px; }
+    .personal-grid .label { color: #9ca3af; display: block; font-size: 8pt; }
+</style>
+</head>
+<body>
+
+    <div class="header">
+        {% if photo_url %}
+        <img class="avatar" src="{{ photo_url }}">
+        {% else %}
+        <div class="avatar-placeholder">{{ full_name[:1] }}</div>
+        {% endif %}
+        <div>
+            <h1>{{ full_name }}</h1>
+            {% if current_position %}<div class="role">{{ current_position }}</div>{% endif %}
+            <div class="contact-line">
+                {% if email %}<span>{{ email }}</span>{% endif %}
+                {% if phone_number %}<span>{{ phone_number }}</span>{% endif %}
+                {% if location %}<span>{{ location }}</span>{% endif %}
+                {% if linkedin_url %}<span>{{ linkedin_url }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="body">
+
+        {% if biography %}
+        <div class="summary">{{ biography }}</div>
+        {% endif %}
+
+        {% if experiences %}
+        <div class="section">
+            <div class="section-title">Work Experience</div>
+            {% for exp in experiences %}
+            <div class="entry">
+                <div class="entry-top">
+                    <span class="entry-title">{{ exp.job_title }}</span>
+                    <span class="entry-date">{{ exp.start_date_display or '' }} — {{ exp.end_date_display or '' }}</span>
+                </div>
+                <div class="entry-sub">{{ exp.company_name }}</div>
+                {% if exp.description %}<div class="entry-desc">{{ exp.description }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if educations %}
+        <div class="section">
+            <div class="section-title">Education</div>
+            {% for edu in educations %}
+            <div class="entry">
+                <div class="entry-top">
+                    <span class="entry-title">{{ edu.degree }}{% if edu.field_of_study %} — {{ edu.field_of_study }}{% endif %}</span>
+                    <span class="entry-date">{{ edu.start_date_display or '' }} — {{ edu.end_date_display or '' }}</span>
+                </div>
+                <div class="entry-sub">{{ edu.school_name }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if trainings %}
+        <div class="section">
+            <div class="section-title">Certifications &amp; Training</div>
+            {% for t in trainings %}
+            <div class="entry">
+                <div class="entry-top">
+                    <span class="entry-title">{{ t.course_name }}</span>
+                    <span class="entry-date">{{ t.start_date_display or '' }}{% if t.end_date_display %} — {{ t.end_date_display }}{% endif %}</span>
+                </div>
+                <div class="entry-sub">{{ t.institution }}</div>
+                {% if t.description %}<div class="entry-desc">{{ t.description }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="two-col">
+            {% if skills %}
+            <div>
+                <div class="section-title">Skills</div>
+                {% for skill in skills %}<span class="pill">{{ skill }}</span>{% endfor %}
+            </div>
+            {% endif %}
+            {% if languages %}
+            <div>
+                <div class="section-title">Languages</div>
+                {% for lang in languages %}
+                <div class="lang-row"><b>{{ lang.language }}</b> — {{ lang.proficiency }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% if date_of_birth or gender or marital_status or nationality %}
+        <div class="section" style="margin-top: 16px;">
+            <div class="section-title">Personal Information</div>
+            <div class="personal-grid">
+                {% if date_of_birth %}<div><span class="label">Date of Birth</span>{{ date_of_birth }}</div>{% endif %}
+                {% if gender %}<div><span class="label">Gender</span>{{ gender }}</div>{% endif %}
+                {% if marital_status %}<div><span class="label">Marital Status</span>{{ marital_status }}</div>{% endif %}
+                {% if nationality %}<div><span class="label">Nationality</span>{{ nationality }}</div>{% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+</body>
+</html>

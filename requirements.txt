@@ -39,3 +39,6 @@ google-genai
 # Real-time Chat
 websockets
 firebase-admin
+
+# CV Generator (HTML/CSS -> PDF)
+weasyprint

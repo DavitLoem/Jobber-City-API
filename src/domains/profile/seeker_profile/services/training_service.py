@@ -5,7 +5,10 @@ from fastapi import HTTPException, status
 
 from src.core.mongo import seeker_profiles_collection
 from src.domains.profile.seeker_profile.schema.sub_schema import TrainingRequest
-from src.domains.profile.seeker_profile.services.core_profile_service import calculate_completion_percentage
+from src.domains.profile.seeker_profile.services.core_profile_service import (
+    calculate_completion_percentage,
+    ensure_seeker_profile_exists,
+)
 
 
 async def _update_completion_percentage(user_oid: ObjectId):
@@ -26,6 +29,8 @@ async def add_training(user_id: str, data: TrainingRequest) -> dict:
         train_dict["start_date"] = datetime.combine(train_dict["start_date"], datetime.min.time()).replace(tzinfo=timezone.utc)
     if isinstance(train_dict.get("end_date"), date):
         train_dict["end_date"] = datetime.combine(train_dict["end_date"], datetime.min.time()).replace(tzinfo=timezone.utc)
+
+    await ensure_seeker_profile_exists(user_oid)
 
     result = await seeker_profiles_collection.update_one(
         {"user_id": user_oid},

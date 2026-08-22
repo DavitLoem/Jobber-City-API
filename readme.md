@@ -16,7 +16,7 @@ A FastAPI-based authentication API with MongoDB backend.
 
 To run this application, type following commands:
 
-```bash
+````bash
 # for development
 uvicorn main:app --reload --port=8000
 
@@ -37,9 +37,10 @@ python manage_db.py fresh
 2. Create a virtual environment:
 ```bash
 python -m venv venv
-```
+````
 
 3. Activate the virtual environment:
+
 ```bash
 # Windows
 venv\Scripts\activate
@@ -49,11 +50,13 @@ source venv/bin/activate
 ```
 
 4. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 5. Configure environment variables in `.env`:
+
 ```
 MONGO_USERNAME = your_username
 MONGO_PASSWORD = your_password
@@ -64,6 +67,7 @@ MONGO_PORT = 27017
 ## Running the Application
 
 Start the development server:
+
 ```bash
 python -m uvicorn main:app --reload
 ```
@@ -73,19 +77,20 @@ The API will be available at `http://localhost:8000`
 ## API Documentation
 
 Once the server is running, access the interactive API documentation:
+
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
 ## Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| fastapi | Web framework |
-| uvicorn | ASGI server |
-| pymongo | MongoDB driver |
+| Package       | Purpose                         |
+| ------------- | ------------------------------- |
+| fastapi       | Web framework                   |
+| uvicorn       | ASGI server                     |
+| pymongo       | MongoDB driver                  |
 | python-dotenv | Environment variable management |
-| bcrypt | Password hashing |
-| PyJWT | JWT token handling |
+| bcrypt        | Password hashing                |
+| PyJWT         | JWT token handling              |
 
 ## Project Structure
 

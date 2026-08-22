@@ -15,6 +15,9 @@ class JobFeedResponse(BaseModel):
     # ព័ត៌មានដែល Join មកពី Company
     company_name: str
     logo_url: Optional[str] = None
+    # 🎯 User ID របស់គណនី Employer ជាម្ចាស់ក្រុមហ៊ុននេះ (មិនមែន company_id ទេ) — ត្រូវការសម្រាប់
+    # Flutter ហៅ POST /api/chat/conversations (other_user_id) ពេល Seeker ចុច "Message Employer"
+    employer_user_id: Optional[str] = None
     
     # ព័ត៌មានដែល Join មកពី Master Data (បំប្លែងរួចជាស្រេចពី Backend)
     location: str = Field(..., description="ឧ. Russey Keo, Phnom Penh")

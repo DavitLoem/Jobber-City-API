@@ -7,7 +7,11 @@ from datetime import datetime, timezone
 from src.core.mongo import seeker_profiles_collection
 from src.domains.profile.seeker_profile.services.ai_service import analyze_cv_with_gemini
 from src.utils.cloudinary import upload_document, upload_image
-from src.domains.profile.seeker_profile.services.core_profile_service import helper_format_profile, calculate_completion_percentage
+from src.domains.profile.seeker_profile.services.core_profile_service import (
+    helper_format_profile,
+    calculate_completion_percentage,
+    ensure_seeker_profile_exists,
+)
 from src.utils.pdf_extractor import extract_text_from_pdf
 
 async def upload_profile_image(user_id: str, file: UploadFile) -> dict:
@@ -47,15 +51,9 @@ async def upload_profile_image(user_id: str, file: UploadFile) -> dict:
     user_oid = ObjectId(user_id)
 
     # ៤. Update ចូល Database
-    # ទាញយក Profile ចាស់សិន ដើម្បីគណនាភាគរយឡើងវិញ
+    # ធានាថា Profile មានស្រាប់ជាមុនសិន (បង្កើតទទេស្វ័យប្រវត្តិបើមិនទាន់មាន) រួចទាញយកមកគណនាភាគរយ
+    await ensure_seeker_profile_exists(user_oid)
     existing_profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
-    
-    if not existing_profile:
-        # បើគាត់មិនទាន់មាន Profile ទេ (មិនទាន់ Update ព័ត៌មានគោលសោះ) មិនគួរឱ្យគាត់ Upload រូបមុនទេ
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please update your profile information first before uploading a profile image."
-        )
 
     # Update URL ថ្មី និងគណនាភាគរយ
     existing_profile["profile_image_url"] = new_image_url
@@ -111,9 +109,9 @@ async def upload_and_parse_cv(user_id: str, file: UploadFile) -> dict:
     resume_url = upload_res.get("url")
 
     # ៦. Smart Data Merging (បញ្ចូលទិន្នន័យទៅក្នុង Profile)
+    # ធានាថា Profile មានស្រាប់ជាមុនសិន (Seeker អាច Upload CV ជាជំហានទីមួយបានផងដែរ)
+    await ensure_seeker_profile_exists(user_oid)
     profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
-    if not profile:
-        raise HTTPException(status_code=404, detail="Please update your profile information first.")
 
     extracted_data = ai_result.get("extracted_data", {})
     

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ full_name }} - CV</title>
+<style>
+    @page {
+        size: A4;
+        margin: 20mm 22mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        color: #1f2328;
+        font-size: 10.5pt;
+        line-height: 1.55;
+    }
+    .header {
+        text-align: center;
+        border-bottom: 2px solid #1f2328;
+        padding-bottom: 12px;
+        margin-bottom: 18px;
+    }
+    .header h1 {
+        font-size: 20pt;
+        margin: 0 0 4px 0;
+        letter-spacing: 0.5px;
+    }
+    .header .role {
+        font-size: 11pt;
+        color: #444;
+        margin-bottom: 8px;
+        font-style: italic;
+    }
+    .contact-line {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 9pt;
+        color: #444;
+    }
+    .contact-line span:not(:last-child)::after {
+        content: "   |   ";
+        color: #aaa;
+    }
+
+    .section { margin-bottom: 16px; }
+    .section-title {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 10.5pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #1f2328;
+        border-bottom: 1px solid #999;
+        padding-bottom: 3px;
+        margin-bottom: 10px;
+    }
+    .summary { color: #333; }
+
+    .entry { margin-bottom: 12px; }
+    .entry-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+    }
+    .entry-title { font-weight: bold; font-size: 10.5pt; }
+    .entry-sub { font-style: italic; color: #333; font-size: 10pt; }
+    .entry-date {
+        font-family: Helvetica, Arial, sans-serif;
+        color: #555;
+        font-size: 8.5pt;
+        white-space: nowrap;
+    }
+    .entry-desc { color: #333; font-size: 9.5pt; margin-top: 3px; }
+
+    .two-col {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+    .two-col > div { width: 48%; }
+
+    .skills-list, .lang-list {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 9.5pt;
+        color: #333;
+    }
+    .personal-table {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 9pt;
+        color: #444;
+        width: 100%;
+    }
+    .personal-table td { padding: 1px 0; }
+    .personal-table td.label { color: #777; width: 30%; }
+</style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>{{ full_name }}</h1>
+        {% if current_position %}<div class="role">{{ current_position }}</div>{% endif %}
+        <div class="contact-line">
+            {% if email %}<span>{{ email }}</span>{% endif %}
+            {% if phone_number %}<span>{{ phone_number }}</span>{% endif %}
+            {% if location %}<span>{{ location }}</span>{% endif %}
+            {% if linkedin_url %}<span>{{ linkedin_url }}</span>{% endif %}
+        </div>
+    </div>
+
+    {% if biography %}
+    <div class="section">
+        <div class="section-title">Professional Summary</div>
+        <div class="summary">{{ biography }}</div>
+    </div>
+    {% endif %}
+
+    {% if experiences %}
+    <div class="section">
+        <div class="section-title">Work Experience</div>
+        {% for exp in experiences %}
+        <div class="entry">
+            <div class="entry-top">
+                <span class="entry-title">{{ exp.job_title }}, {{ exp.company_name }}</span>
+                <span class="entry-date">{{ exp.start_date_display or '' }} — {{ exp.end_date_display or '' }}</span>
+            </div>
+            {% if exp.description %}<div class="entry-desc">{{ exp.description }}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if educations %}
+    <div class="section">
+        <div class="section-title">Education</div>
+        {% for edu in educations %}
+        <div class="entry">
+            <div class="entry-top">
+                <span class="entry-title">{{ edu.degree }}{% if edu.field_of_study %} — {{ edu.field_of_study }}{% endif %}, {{ edu.school_name }}</span>
+                <span class="entry-date">{{ edu.start_date_display or '' }} — {{ edu.end_date_display or '' }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if trainings %}
+    <div class="section">
+        <div class="section-title">Certifications &amp; Training</div>
+        {% for t in trainings %}
+        <div class="entry">
+            <div class="entry-top">
+                <span class="entry-title">{{ t.course_name }}, {{ t.institution }}</span>
+                <span class="entry-date">{{ t.start_date_display or '' }}{% if t.end_date_display %} — {{ t.end_date_display }}{% endif %}</span>
+            </div>
+            {% if t.description %}<div class="entry-desc">{{ t.description }}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="two-col">
+        {% if skills %}
+        <div>
+            <div class="section-title">Skills</div>
+            <div class="skills-list">{{ skills | join(', ') }}</div>
+        </div>
+        {% endif %}
+        {% if languages %}
+        <div>
+            <div class="section-title">Languages</div>
+            <div class="lang-list">
+                {% for lang in languages %}{{ lang.language }} ({{ lang.proficiency }}){% if not loop.last %}, {% endif %}{% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if date_of_birth or gender or marital_status or nationality %}
+    <div class="section">
+        <div class="section-title">Personal Information</div>
+        <table class="personal-table">
+            {% if date_of_birth %}<tr><td class="label">Date of Birth</td><td>{{ date_of_birth }}</td></tr>{% endif %}
+            {% if gender %}<tr><td class="label">Gender</td><td>{{ gender }}</td></tr>{% endif %}
+            {% if marital_status %}<tr><td class="label">Marital Status</td><td>{{ marital_status }}</td></tr>{% endif %}
+            {% if nationality %}<tr><td class="label">Nationality</td><td>{{ nationality }}</td></tr>{% endif %}
+        </table>
+    </div>
+    {% endif %}
+
+</body>
+</html>

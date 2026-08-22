@@ -36,3 +36,30 @@ class ApplicantResponse(BaseModel):
     cover_letter: Optional[str] = None
     status: str
     applied_at: datetime
+    job_title: Optional[str] = Field(None, description="ចំណងជើងការងារដែលបេក្ខជននេះបានដាក់ពាក្យ (មានប្រយោជន៍ពេលមើល All Jobs)")
+
+
+class JobDropdownItem(BaseModel):
+    """Schema សម្រាប់ Dropdown ជ្រើសរើស Job នៅលើអេក្រង់ Candidates"""
+    job_id: str
+    display_name: str
+    status: str = "active"
+
+
+class SeekerDirectoryResponse(BaseModel):
+    """Schema សម្រាប់បញ្ជីគណនី Seeker ទាំងអស់ក្នុងប្រព័ន្ធ (សម្រាប់ Employer ជ្រើសរើសចាប់ផ្ដើម Chat ថ្មី)"""
+    seeker_user_id: str = Field(..., description="ID របស់គណនី Seeker")
+    first_name: str
+    last_name: str
+    profile_image_url: Optional[str] = None
+    current_position: Optional[str] = None
+    has_applied_to_you: bool = Field(False, description="ធ្លាប់បានដាក់ពាក្យស្នើសុំការងារមកក្រុមហ៊ុននេះ ឬអត់")
+
+
+class SeekerDirectoryPage(BaseModel):
+    """Schema សម្រាប់លទ្ធផលបញ្ជី Seeker ដែលមាន Pagination"""
+    items: list[SeekerDirectoryResponse]
+    total: int
+    page: int
+    limit: int
+    has_more: bool

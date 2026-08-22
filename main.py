@@ -109,6 +109,7 @@ from src.domains.profile.seeker_profile.routes.experience_router import router a
 from src.domains.profile.seeker_profile.routes.education_router import router as seeker_education_router
 from src.domains.profile.seeker_profile.routes.training_router import router as seeker_training_router
 from src.domains.profile.seeker_profile.routes.language_router import router as seeker_language_router
+from src.domains.profile.seeker_profile.routes.cv_router import router as seeker_cv_router
 from src.domains.master_data.routes.job_level_router import router as admin_job_level_router
 from src.domains.master_data.routes.education_level_router import router as admin_education_level_router
 from src.domains.master_data.routes.skill_router import router as admin_skill_router
@@ -123,6 +124,7 @@ from src.domains.seeker.job_feed.routes.job_feed_router import router as job_fee
 from src.domains.seeker.application.routes.seeker_application_router import router as seeker_application_router
 from src.domains.chat.routes.chat_router import router as chat_router
 from src.domains.chat.routes.chat_ws_router import router as chat_ws_router
+from src.domains.interview.routes.interview_router import router as interview_router
 
 
 # =========================
@@ -154,6 +156,7 @@ app.include_router(seeker_experience_router)
 app.include_router(seeker_education_router)
 app.include_router(seeker_training_router)
 app.include_router(seeker_language_router)
+app.include_router(seeker_cv_router)
 app.include_router(job_feed_router)
 app.include_router(seeker_application_router)
 
@@ -165,6 +168,9 @@ app.include_router(applicant_router)
 # Chat (Real-time messaging between Seeker & Employer)
 app.include_router(chat_router)
 app.include_router(chat_ws_router)
+
+# Online Interview (Video Call scheduling via Jitsi Meet, Seeker & Employer)
+app.include_router(interview_router)
 
 
 # ==========================================

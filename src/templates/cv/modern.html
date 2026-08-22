@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ full_name }} - CV</title>
+<style>
+    @page {
+        size: A4;
+        margin: 0;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        color: #2b2f38;
+        font-size: 10.5pt;
+        line-height: 1.5;
+    }
+    .page {
+        display: flex;
+        width: 100%;
+        min-height: 297mm;
+    }
+
+    /* ================= Sidebar ================= */
+    .sidebar {
+        width: 34%;
+        background: #1f2937;
+        color: #e5e7eb;
+        padding: 26px 20px;
+    }
+    .avatar {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #4b5563;
+        display: block;
+        margin: 0 auto 16px auto;
+    }
+    .avatar-placeholder {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        background: #374151;
+        color: #9ca3af;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28pt;
+        margin: 0 auto 16px auto;
+    }
+    .sidebar h1 {
+        font-size: 15pt;
+        text-align: center;
+        margin: 0 0 2px 0;
+        color: #ffffff;
+    }
+    .sidebar .role {
+        text-align: center;
+        color: #93c5fd;
+        font-size: 10pt;
+        margin-bottom: 20px;
+    }
+    .sb-section { margin-bottom: 20px; }
+    .sb-title {
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 9pt;
+        color: #93c5fd;
+        border-bottom: 1px solid #374151;
+        padding-bottom: 4px;
+        margin-bottom: 8px;
+    }
+    .sb-row { font-size: 9pt; margin-bottom: 6px; color: #d1d5db; word-break: break-word; }
+    .sb-row .label { color: #9ca3af; display: block; font-size: 8pt; }
+
+    .pill {
+        display: inline-block;
+        background: #374151;
+        color: #e5e7eb;
+        padding: 3px 9px;
+        border-radius: 10px;
+        font-size: 8.5pt;
+        margin: 0 4px 6px 0;
+    }
+    .lang-row { margin-bottom: 8px; font-size: 9pt; }
+    .lang-name { display: flex; justify-content: space-between; margin-bottom: 2px; }
+    .lang-bar-bg { background: #374151; border-radius: 3px; height: 5px; width: 100%; }
+    .lang-bar-fill { background: #60a5fa; border-radius: 3px; height: 5px; }
+
+    /* ================= Main ================= */
+    .main { width: 66%; padding: 30px 28px; }
+    .summary {
+        font-size: 10pt;
+        color: #4b5563;
+        margin-bottom: 22px;
+    }
+    .section { margin-bottom: 20px; }
+    .section-title {
+        font-size: 12pt;
+        font-weight: bold;
+        color: #1f2937;
+        border-bottom: 2px solid #1f2937;
+        padding-bottom: 4px;
+        margin-bottom: 12px;
+    }
+    .entry { margin-bottom: 14px; }
+    .entry-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+    }
+    .entry-title { font-weight: bold; font-size: 10.5pt; color: #111827; }
+    .entry-sub { color: #4b5563; font-size: 9.5pt; margin-bottom: 3px; }
+    .entry-date { color: #6b7280; font-size: 8.5pt; white-space: nowrap; }
+    .entry-desc { color: #4b5563; font-size: 9.5pt; margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+    <div class="sidebar">
+        {% if photo_url %}
+        <img class="avatar" src="{{ photo_url }}">
+        {% else %}
+        <div class="avatar-placeholder">{{ full_name[:1] }}</div>
+        {% endif %}
+        <h1>{{ full_name }}</h1>
+        {% if current_position %}<div class="role">{{ current_position }}</div>{% endif %}
+
+        <div class="sb-section">
+            <div class="sb-title">Contact</div>
+            {% if email %}<div class="sb-row"><span class="label">Email</span>{{ email }}</div>{% endif %}
+            {% if phone_number %}<div class="sb-row"><span class="label">Phone</span>{{ phone_number }}</div>{% endif %}
+            {% if location %}<div class="sb-row"><span class="label">Location</span>{{ location }}</div>{% endif %}
+            {% if linkedin_url %}<div class="sb-row"><span class="label">LinkedIn</span>{{ linkedin_url }}</div>{% endif %}
+            {% if portfolio_url %}<div class="sb-row"><span class="label">Portfolio</span>{{ portfolio_url }}</div>{% endif %}
+        </div>
+
+        {% if date_of_birth or gender or marital_status or nationality %}
+        <div class="sb-section">
+            <div class="sb-title">Personal Info</div>
+            {% if date_of_birth %}<div class="sb-row"><span class="label">Date of Birth</span>{{ date_of_birth }}</div>{% endif %}
+            {% if gender %}<div class="sb-row"><span class="label">Gender</span>{{ gender }}</div>{% endif %}
+            {% if marital_status %}<div class="sb-row"><span class="label">Marital Status</span>{{ marital_status }}</div>{% endif %}
+            {% if nationality %}<div class="sb-row"><span class="label">Nationality</span>{{ nationality }}</div>{% endif %}
+        </div>
+        {% endif %}
+
+        {% if skills %}
+        <div class="sb-section">
+            <div class="sb-title">Skills</div>
+            {% for skill in skills %}<span class="pill">{{ skill }}</span>{% endfor %}
+        </div>
+        {% endif %}
+
+        {% if expertise_categories %}
+        <div class="sb-section">
+            <div class="sb-title">Expertise</div>
+            {% for cat in expertise_categories %}<span class="pill">{{ cat }}</span>{% endfor %}
+        </div>
+        {% endif %}
+
+        {% if languages %}
+        <div class="sb-section">
+            <div class="sb-title">Languages</div>
+            {% for lang in languages %}
+            <div class="lang-row">
+                <div class="lang-name"><span>{{ lang.language }}</span><span>{{ lang.proficiency }}</span></div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="main">
+        {% if biography %}
+        <div class="summary">{{ biography }}</div>
+        {% endif %}
+
+        {% if experiences %}
+        <div class="section">
+            <div class="section-title">Work Experience</div>
+            {% for exp in experiences %}
+            <div class="entry">
+                <div class="entry-top">
+                    <span class="entry-title">{{ exp.job_title }}</span>
+                    <span class="entry-date">{{ exp.start_date_display or '' }} — {{ exp.end_date_display or '' }}</span>
+                </div>
+                <div class="entry-sub">{{ exp.company_name }}</div>
+                {% if exp.description %}<div class="entry-desc">{{ exp.description }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if educations %}
+        <div class="section">
+            <div class="section-title">Education</div>
+            {% for edu in educations %}
+            <div class="entry">
+                <div class="entry-top">
+                    <span class="entry-title">{{ edu.degree }}{% if edu.field_of_study %} — {{ edu.field_of_study }}{% endif %}</span>
+                    <span class="entry-date">{{ edu.start_date_display or '' }} — {{ edu.end_date_display or '' }}</span>
+                </div>
+                <div class="entry-sub">{{ edu.school_name }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if trainings %}
+        <div class="section">
+            <div class="section-title">Certifications &amp; Training</div>
+            {% for t in trainings %}
+            <div class="entry">
+                <div class="entry-top">
+                    <span class="entry-title">{{ t.course_name }}</span>
+                    <span class="entry-date">{{ t.start_date_display or '' }}{% if t.end_date_display %} — {{ t.end_date_display }}{% endif %}</span>
+                </div>
+                <div class="entry-sub">{{ t.institution }}</div>
+                {% if t.description %}<div class="entry-desc">{{ t.description }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+</body>
+</html>

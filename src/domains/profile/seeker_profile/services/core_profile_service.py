@@ -34,6 +34,29 @@ def helper_format_profile(profile: dict) -> dict:
         
     return profile
 
+async def ensure_seeker_profile_exists(user_oid: ObjectId) -> None:
+    """
+    🎯 បង្កើត Profile ទទេមួយដោយស្វ័យប្រវត្តិ (Lazy Creation) ប្រសិនបើ Seeker
+    មិនទាន់មាន `seeker_profiles` document សោះ។
+
+    មុននេះ add_experience/add_education/add_training/add_language នីមួយៗ
+    ប្រើ $push ដោយផ្ទាល់ ដែលបរាជ័យ (404) ប្រសិនបើ document មិនទាន់មាន —
+    ដូច្នេះ Seeker ត្រូវបំពេញ "Core Profile" ជាមុនសិន ទើបអាចបន្ថែម
+    Experience/Education/Training/Language បាន។ នេះជាលំដាប់មិនចាំបាច់ព្រោះ
+    App ជាច្រើនអនុញ្ញាតឱ្យបំពេញផ្នែកណាមួយមុនក៏បាន។
+
+    ប្រើ $setOnInsert + upsert=True ព្រោះវា Atomic — ទោះបីជា Request ច្រើន
+    មកដល់ស្រប់គ្នាក៏ដោយ MongoDB ធានាថាមានតែ Document តែមួយប៉ុណ្ណោះនឹងត្រូវបានបង្កើត
+    (គ្មាន Duplicate ទេ) ហើយ Profile ដែលមានស្រាប់រួចហើយក៏មិនត្រូវបាន Overwrite ដែរ។
+    """
+    empty_profile = SeekerProfileModel(user_id=user_oid).to_create_dict()
+    await seeker_profiles_collection.update_one(
+        {"user_id": user_oid},
+        {"$setOnInsert": empty_profile},
+        upsert=True,
+    )
+
+
 def calculate_completion_percentage(profile: dict) -> int:
     """គណនាភាគរយនៃការបំពេញ Profile (ឧទាហរណ៍សាមញ្ញ)"""
     score = 0

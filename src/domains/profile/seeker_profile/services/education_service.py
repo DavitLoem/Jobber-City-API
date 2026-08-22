@@ -5,7 +5,10 @@ from fastapi import HTTPException, status
 
 from src.core.mongo import seeker_profiles_collection
 from src.domains.profile.seeker_profile.schema.sub_schema import EducationRequest
-from src.domains.profile.seeker_profile.services.core_profile_service import calculate_completion_percentage
+from src.domains.profile.seeker_profile.services.core_profile_service import (
+    calculate_completion_percentage,
+    ensure_seeker_profile_exists,
+)
 
 async def _update_completion_percentage(user_oid: ObjectId):
     profile = await seeker_profiles_collection.find_one({"user_id": user_oid})
@@ -25,6 +28,8 @@ async def add_education(user_id: str, data: EducationRequest) -> dict:
         edu_dict["start_date"] = datetime.combine(edu_dict["start_date"], datetime.min.time()).replace(tzinfo=timezone.utc)
     if isinstance(edu_dict.get("end_date"), date):
         edu_dict["end_date"] = datetime.combine(edu_dict["end_date"], datetime.min.time()).replace(tzinfo=timezone.utc)
+
+    await ensure_seeker_profile_exists(user_oid)
 
     result = await seeker_profiles_collection.update_one(
         {"user_id": user_oid},

@@ -54,3 +54,6 @@ conversations_collection = collections("conversations")
 chat_messages_collection = collections("chat_messages")
 device_tokens_collection = collections("device_tokens")
 
+# Online Interviews (Video Call scheduling — Seeker <-> Employer)
+interviews_collection = collections("interviews")
+
