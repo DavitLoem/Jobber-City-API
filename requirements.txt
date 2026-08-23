@@ -39,3 +39,5 @@ google-genai
 # Real-time Chat
 websockets
 firebase-admin
+
+weasyprint
