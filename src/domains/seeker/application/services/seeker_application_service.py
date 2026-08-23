@@ -220,6 +220,8 @@ class SeekerApplicationService:
             
             # 🟢 បញ្ចូល Field លម្អិត
             "cover_letter": app.get("cover_letter"),
+            "cover_letter_url": app.get("cover_letter_url"),
+            "cover_letter_filename": app.get("cover_letter_filename"),
             "resume_url": app.get("resume_url"),
             "status": app.get("status"),
             "status_history": app.get("status_history", []),

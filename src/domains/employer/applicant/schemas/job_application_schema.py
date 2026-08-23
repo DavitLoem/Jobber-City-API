@@ -45,6 +45,8 @@ class ApplicantResponse(BaseModel):
     resume_url: Optional[str] = None
     resume_filename: Optional[str] = None
     cover_letter: Optional[str] = None
+    cover_letter_url: Optional[str] = None
+    cover_letter_filename: Optional[str] = None
     status: str
     applied_at: datetime
     
@@ -67,6 +69,8 @@ class SeekerApplicationResponse(BaseModel):
     resume_url: Optional[str] = None
     resume_filename: Optional[str] = None
     cover_letter: Optional[str] = None
+    cover_letter_url: Optional[str] = None
+    cover_letter_filename: Optional[str] = None
     status: str
     applied_at: datetime
     updated_at: datetime
