@@ -7,7 +7,7 @@ aptPkgs = [
     "libgdk-pixbuf2.0-0",
     "libffi-dev",
     "shared-mime-info",
-    "libglib2.0-0",        # 🎯 ថែមមួយនេះសម្រាប់ដោះស្រាយ Error 'libgobject'
-    "libharfbuzz0b",       # 🎯 ថែមសម្រាប់ជួយរៀបចំទម្រង់អក្សរ (Text Shaping)
-    "libpangoft2-1.0-0"    # 🎯 ថែមសម្រាប់ជួយគូរ Font (Font Rendering)
+    "libglib2.0-0",
+    "fontconfig",
+    "libfontconfig1"
 ]
