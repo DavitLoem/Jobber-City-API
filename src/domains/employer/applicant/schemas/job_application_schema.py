@@ -10,6 +10,8 @@ class ApplyJobRequest(BaseModel):
     """Schema សម្រាប់ Seeker ប្រើពេលចុចដាក់ពាក្យ (Apply Job)"""
     cover_letter: Optional[str] = Field(None, description="សារខ្លីៗបញ្ចុះបញ្ចូលក្រុមហ៊ុន")
     resume_url: Optional[str] = Field(None, description="Link របស់ CV (បើមិនបញ្ជូនមក វានឹងយកពី Profile ដោយស្វ័យប្រវត្តិ)")
+    cover_letter_url: Optional[str] = None
+    cover_letter_filename: Optional[str] = None
 
 class UpdateApplicationStatus(BaseModel):
     """Schema សម្រាប់ Employer ប្រើពេលប្តូរស្ថានភាពបេក្ខជន"""

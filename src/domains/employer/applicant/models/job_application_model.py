@@ -8,6 +8,8 @@ class JobApplicationModel:
         company_id: str | ObjectId,
         seeker_user_id: str | ObjectId,
         cover_letter: str = "",
+        cover_letter_url : str = None,
+        cover_letter_filename: str = None,
         resume_url: str = None,
         resume_filename: str = None,
         status: str = "pending",
@@ -21,7 +23,10 @@ class JobApplicationModel:
         self.seeker_user_id = ObjectId(seeker_user_id) if isinstance(seeker_user_id, str) else seeker_user_id
         
         self.cover_letter = cover_letter
+        self.cover_letter_url = cover_letter_url
+        self.cover_letter_filename = cover_letter_filename
         self.resume_url = resume_url
+        self.resume_filename = resume_filename
         self.status = status
         
         # 🟢 កំណត់តម្លៃ Default

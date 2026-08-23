@@ -35,6 +35,8 @@ class ApplicantService:
             "resume_url": app.get("resume_url"),
             "resume_filename": app.get("resume_filename"),
             "cover_letter": app.get("cover_letter"),
+            "cover_letter_url": app.get("cover_letter_url"),
+            "cover_letter_filename": app.get("cover_letter_filename"),
             "status": app.get("status"),
             "interview_schedule": app.get("interview_schedule"),
             "feedback": app.get("feedback"),
@@ -322,11 +324,27 @@ class ApplicantService:
             seeker_id = str(updated_app.get("seeker_user_id"))
             status_formatted = new_status.capitalize()
             
+            # 🎯 ពិនិត្យមើលថាតើវាជាការកំណត់/ដូរថ្ងៃសម្ភាសន៍ឬអត់
+            if new_status == "interview" and interview_schedule:
+                notif_title = "Interview Scheduled"
+                # បើមាន Field date នៅក្នុង interview_schedule អាចទាញមកបង្ហាញបាន
+                date_str = interview_schedule.get("date", "")
+                if date_str:
+                    # អាច Format ថ្ងៃខែបន្ថែមបើត្រូវការ ប៉ុន្តែបណ្តោះអាសន្នដាក់បែបនេះសិន
+                    notif_message = f"Your interview has been scheduled/updated for {date_str}. Please check the details."
+                else:
+                    notif_message = "Your interview schedule has been updated. Please check the details."
+                notif_type = "interview_update"
+            else:
+                notif_title = "Application Updated"
+                notif_message = f"Your job application status has been updated to {status_formatted}."
+                notif_type = "status_update"
+            
             await notification_service.create_notification(
                 user_id=seeker_id,
-                title="Application Updated",
-                message=f"Your job application status has been updated to {status_formatted}.",
-                notif_type="status_update",
+                title=notif_title,
+                message=notif_message,
+                notif_type=notif_type,
                 related_id=str(updated_app["_id"])
             )
         except Exception as e:
@@ -394,18 +412,28 @@ class ApplicantService:
         
         # ដូរពី modified_count មក matched_count វិញ ដើម្បីធានាថាឱ្យតែរកឃើញគឺបាញ់សារ (ទោះជា status ចាស់ក៏ដោយ សម្រាប់ពេលតេស្ត)
         if result.matched_count > 0: 
-            # ទាញយកឯកសារដែលត្រូវគ្នា ដើម្បីយក seeker_user_id
             updated_apps = await job_applications_collection.find({"_id": {"$in": object_ids}}).to_list(length=None)
             status_formatted = new_status.capitalize()
+            
+            # 🎯 កំណត់ Title និង Message ទៅតាមប្រភេទ Status សម្រាប់ Bulk Update
+            if new_status == "interview" and interview_schedule:
+                notif_title = "Interview Scheduled"
+                date_str = interview_schedule.get("date", "")
+                notif_message = f"Your interview has been scheduled/updated for {date_str}." if date_str else "Your interview schedule has been updated."
+                notif_type = "interview_update"
+            else:
+                notif_title = "Application Updated"
+                notif_message = f"Your job application status has been updated to {status_formatted}."
+                notif_type = "status_update"
             
             for app in updated_apps:
                 try:
                     seeker_id = str(app.get("seeker_user_id"))
                     await notification_service.create_notification(
                         user_id=seeker_id,
-                        title="Application Updated",
-                        message=f"Your job application status has been updated to {status_formatted}.",
-                        notif_type="status_update",
+                        title=notif_title,
+                        message=notif_message,
+                        notif_type=notif_type,
                         related_id=str(app["_id"])
                     )
                 except Exception as e:

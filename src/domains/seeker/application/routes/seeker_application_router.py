@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, File, Path, Query, UploadFile
 from src.core.response import APIResponse
 
 # 🎯 Import Role Checker សម្រាប់ Seeker
@@ -6,6 +6,7 @@ from src.dependencies.dependencies import require_seeker
 
 # 🎯 Import Service និង Schema 
 from src.domains.employer.applicant.schemas.job_application_schema import ApplyJobRequest
+from src.domains.profile.seeker_profile.services.attachment_service import upload_cover_letter
 from src.domains.seeker.application.services.seeker_application_service import SeekerApplicationService
 
 application_service = SeekerApplicationService()
@@ -91,5 +92,24 @@ async def get_application_detail_route(
     return APIResponse(
         success=True, 
         message="Application details fetched successfully", 
+        data=result
+    )
+    
+@router.post("/cover-letter", response_model=APIResponse)
+async def upload_cover_letter_endpoint(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_seeker) 
+):
+    """
+    Upload ឯកសារ Cover Letter (PDF, DOC, DOCX) ទៅកាន់ Cloudinary។
+    វានឹងត្រឡប់មកវិញនូវ URL សម្រាប់ឱ្យ App យកទៅបោះបន្តពេលហៅ API Apply Job។
+    """
+    # ហៅមុខងារពី Service ដើម្បីដំណើរការ Upload
+    result = await upload_cover_letter(file)
+    
+    # បោះទិន្នន័យ (URL ថ្មី និងឈ្មោះឯកសារ) ត្រឡប់ទៅឱ្យ Frontend វិញ
+    return APIResponse(
+        success=True, 
+        message="Cover letter uploaded successfully", 
         data=result
     )

@@ -14,6 +14,7 @@ from src.core.mongo import (
 from src.domains.chat.models.chat_model import ConversationModel, MessageModel
 from src.domains.chat.services.connection_manager import connection_manager
 from src.domains.chat.services.push_service import send_chat_push_notification
+from src.domains.notification.services.notification_service import notification_service
 
 
 class ChatService:
@@ -267,24 +268,19 @@ class ChatService:
         return formatted
 
     async def _push_new_message_notification(self, recipient_id: ObjectId, sender: dict, preview: str, conversation_id: str):
-        tokens_cursor = device_tokens_collection.find({"user_id": recipient_id})
-        tokens = [t["fcm_token"] async for t in tokens_cursor]
-        if not tokens:
-            return
+            sender_name = f"{sender.get('first_name', '')} {sender.get('last_name', '')}".strip() or "New message"
 
-        sender_name = f"{sender.get('first_name', '')} {sender.get('last_name', '')}".strip() or "New message"
-
-        result = await send_chat_push_notification(
-            fcm_tokens=tokens,
-            title=sender_name,
-            body=preview,
-            data={"type": "chat_message", "conversation_id": conversation_id},
-        )
-
-        # 🎯 សម្អាត Token ដែលលែងប្រើការ (App ត្រូវបានលុប/Uninstall) ចេញពី Database ស្វ័យប្រវត្តិ
-        invalid = result.get("invalid_tokens") or []
-        if invalid:
-            await device_tokens_collection.delete_many({"fcm_token": {"$in": invalid}})
+            try:
+                # 🎯 ហៅ notification_service ថ្មី
+                await notification_service.create_notification(
+                    user_id=str(recipient_id),
+                    title=sender_name,
+                    message=preview,
+                    notif_type="chat_message",
+                    related_id=conversation_id
+                )
+            except Exception as e:
+                print(f"❌ Error sending chat push notification: {e}")
 
     async def mark_as_read(self, conversation_id: str, user_id: str) -> dict:
         convo = await self._assert_participant(conversation_id, user_id)

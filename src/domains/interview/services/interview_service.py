@@ -13,7 +13,7 @@ from src.core.mongo import (
     device_tokens_collection,
 )
 from src.domains.interview.models.interview_model import InterviewModel, build_meeting_url
-from src.domains.chat.services.push_service import send_chat_push_notification
+from src.domains.notification.services.notification_service import notification_service
 
 # 🎯 អនុញ្ញាតឱ្យចូលរួម Call បាន ១០ នាទីមុនម៉ោងកំណត់ (កុំឱ្យតឹងពេកសម្រាប់អ្នកមកមុន
 # ប៉ុន្តែនៅតែការពារកុំឱ្យចូល Room ឆាប់ពេក ព្រោះ Public Jitsi Server មិនចាំបាច់ "Waiting Room")
@@ -94,15 +94,18 @@ class InterviewService:
         return doc
 
     async def _notify(self, recipient_id: ObjectId, title: str, body: str, data: dict) -> None:
-        """ការពារកុំឱ្យ Push Notification បរាជ័យធ្វើឱ្យ Action ចម្បង (Schedule/Cancel) បរាជ័យតាម"""
-        try:
-            tokens_cursor = device_tokens_collection.find({"user_id": recipient_id})
-            tokens = [t["fcm_token"] async for t in tokens_cursor]
-            if not tokens:
-                return
-            await send_chat_push_notification(fcm_tokens=tokens, title=title, body=body, data=data)
-        except Exception:
-            pass
+            """ការពារកុំឱ្យ Push Notification បរាជ័យធ្វើឱ្យ Action ចម្បង (Schedule/Cancel) បរាជ័យតាម"""
+            try:
+                # 🎯 ប្រើប្រាស់ notification_service ថ្មីដែលបានបង្កើត
+                await notification_service.create_notification(
+                    user_id=str(recipient_id),
+                    title=title,
+                    message=body,
+                    notif_type=data.get("type", "general"),
+                    related_id=data.get("interview_id")
+                )
+            except Exception as e:
+                print(f"❌ Error in Interview _notify: {e}")
 
     # ==========================================
     # 🎯 Schedule (Employer only)

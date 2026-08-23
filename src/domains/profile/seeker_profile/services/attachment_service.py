@@ -196,3 +196,39 @@ async def delete_cv(user_id: str) -> dict:
     )
 
     return await get_seeker_profile(user_id)
+
+
+async def upload_cover_letter(file: UploadFile) -> dict:
+    """មុខងារសម្រាប់ Upload Cover Letter (PDF, DOC, DOCX) ទៅ Cloudinary"""
+    
+    # ១. ត្រួតពិនិត្យប្រភេទឯកសារ (អនុញ្ញាតតែ PDF និង Word)
+    allowed_types = [
+        "application/pdf", 
+        "application/msword", # សម្រាប់ .doc
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" # សម្រាប់ .docx
+    ]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400, 
+            detail="Only PDF or Word documents (.doc, .docx) are allowed."
+        )
+
+    # ២. ត្រួតពិនិត្យទំហំឯកសារ (អតិបរមា 5MB)
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0) # ត្រឡប់មកដើមវិញ
+    
+    if file_size > 5 * 1024 * 1024: 
+        raise HTTPException(status_code=413, detail="File too large! Max 5MB.")
+
+    # ៣. Upload ទៅ Cloudinary (ដាក់ក្នុង Folder ថ្មីមួយ)
+    upload_res = upload_document(file.file, folder="jobber_city/cover_letters")
+    if not upload_res.get("success"):
+        raise HTTPException(status_code=500, detail=f"Failed to Upload Cover Letter: {upload_res.get('message')}")
+
+    # ៤. ត្រឡប់ទិន្នន័យទៅឱ្យ App វិញ ដើម្បីបោះបន្តទៅ API Apply Job
+    return {
+        "cover_letter_url": upload_res.get("url"),
+        "cover_letter_filename": file.filename,
+        "cover_letter_public_id": upload_res.get("public_id")
+    }

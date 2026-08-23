@@ -64,6 +64,8 @@ class SeekerApplicationService:
             "company_id": job["company_id"],
             "seeker_user_id": seeker_oid,
             "cover_letter": payload.cover_letter or "",
+            "cover_letter_url": payload.cover_letter_url,
+            "cover_letter_filename": payload.cover_letter_filename,
             "resume_url": final_resume_url,
             "resume_filename": final_resume_filename, 
             "status": "pending",
@@ -111,6 +113,8 @@ class SeekerApplicationService:
             "message": "Application submitted successfully!",
             "remaining_quota": DAILY_APPLICATION_LIMIT - (recent_applications_count + 1)
         }
+        
+    
 
     # ==========================================
     # 🎯 Additional feature for Seeker: View own application history
