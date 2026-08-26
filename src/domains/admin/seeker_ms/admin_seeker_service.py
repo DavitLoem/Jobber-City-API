@@ -95,7 +95,8 @@ class AdminSeekerService:
         results = []
         
         async for user in cursor:
-            profile = user.get("profile_info", {})
+            # 🟢 កន្លែងដែលត្រូវកែប្រែ: ប្រើ 'or {}' ដើម្បីការពារករណី profile_info ជា None
+            profile = user.get("profile_info") or {}
             
             # កំណត់ស្ថានភាព (Status) សម្រាប់បង្ហាញលើ UI
             is_active = user.get("is_active", True)
@@ -113,7 +114,7 @@ class AdminSeekerService:
             results.append({
                 "user_id": str(user["_id"]),
                 "full_name": f"{first_name} {last_name}".strip() or "Unknown",
-                "avatar_url": user.get("avatar_url") or profile.get("image_url"),
+                "avatar_url": user.get("avatar_url") or profile.get("image_url"), # ឥឡូវនេះ profile លែង error ទៀតហើយ
                 "current_position": profile.get("current_position", "Job Seeker"),
                 "email": user.get("email", "N/A"),
                 "phone_number": profile.get("phone_number", "N/A"),
