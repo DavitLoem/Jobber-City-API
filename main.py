@@ -37,19 +37,18 @@ app = FastAPI(
 )
 
 # កំណត់ថាអ្នកណាខ្លះ (Domain ណាខ្លះ) អាចហៅ API នេះបាន
-origins = [     # សម្រាប់រត់នៅលើម៉ាស៊ីនផ្ទាល់ខ្លួន (Local)
+origins = [     
     "http://127.0.0.1:5173",
-    "http://localhost:3000",      # សម្រាប់ React/Next.js
-    "http://localhost:5173",      # សម្រាប់ Vue
-    "http://localhost:5000",      # សម្រាប់ Flutter Web
-    "https://jobber-city-api-staging.up.railway.app" # ដាក់ Domain ពិតប្រាកដរបស់អ្នកនៅពេល Deploy
-    "*"                           # ឬដាក់ "*" ដើម្បីអនុញ្ញាតឱ្យហៅពីគ្រប់កន្លែង (ល្អសម្រាប់ការធ្វើតេស្ត)
+    "http://localhost:3000",      
+    "http://localhost:5173",      
+    "http://localhost:5000",      
+    "https://jobber-city-api-staging.up.railway.app" 
 ]
 
 # បន្ថែម CORS Middleware សម្រាប់អនុញ្ញាតឱ្យ Admin Web អាចហៅ API នេះបាន
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # ពេលដាក់ Production គួរដូរជា Domain របស់ Admin Web (ឧ. ["https://admin.jobbercity.com"])
+    allow_origins=origins, 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
