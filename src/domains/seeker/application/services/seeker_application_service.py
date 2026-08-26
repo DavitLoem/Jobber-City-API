@@ -22,7 +22,7 @@ class SeekerApplicationService:
         job_oid = ObjectId(job_id)
         now = datetime.now(timezone.utc)
 
-        # 🛡️ លក្ខខណ្ឌ Check Limit រក្សាទុកដូចដើម[cite: 15]
+        # 🛡️ លក្ខខណ្ឌ Check Limit រក្សាទុកដូចដើម
         twenty_four_hours_ago = now - timedelta(days=1)
         recent_applications_count = await job_applications_collection.count_documents({
             "seeker_user_id": seeker_oid,

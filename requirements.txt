@@ -41,3 +41,5 @@ websockets
 firebase-admin
 
 weasyprint
+
+python-dateutil

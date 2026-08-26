@@ -145,6 +145,8 @@ from src.domains.seeker.bookmark.routes.bookmark_router import router as bookmar
 from src.domains.employer.employer_dashboard.routes.employer_dashboard_router import router as employer_dashboard_router
 from src.domains.notification.routes.notification_router import router as notification_router
 
+from src.domains.admin.dashboard.routes.admin_dashboard_router import router as admin_dashboaed_router
+
 # =========================
 # Admin Routes
 # =========================
@@ -158,6 +160,7 @@ app.include_router(admin_skill_router)
 app.include_router(admin_employment_type_router)
 app.include_router(admin_work_type_router)
 app.include_router(admin_industry_router)
+app.include_router(admin_dashboaed_router)
 
 # =========================
 # Mobile App Routes
