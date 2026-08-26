@@ -147,6 +147,7 @@ from src.domains.notification.routes.notification_router import router as notifi
 
 from src.domains.admin.dashboard.routes.admin_dashboard_router import router as admin_dashboaed_router
 from src.domains.admin.company_ms.admin_company_router import router as company_ms_router
+from src.domains.admin.seeker_ms.admin_seeker_router import router as seeker_ms_router
 
 # =========================
 # Admin Routes
@@ -163,6 +164,7 @@ app.include_router(admin_work_type_router)
 app.include_router(admin_industry_router)
 app.include_router(admin_dashboaed_router)
 app.include_router(company_ms_router)
+app.include_router(seeker_ms_router)
 
 # =========================
 # Mobile App Routes

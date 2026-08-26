@@ -1,5 +1,10 @@
+from datetime import datetime, timezone
+
+from aiosmtplib import status
 from bson import ObjectId
 from typing import Dict, Any, Optional
+
+from fastapi import HTTPException
 from src.core.mongo import (
     company_profiles_collection, 
     users_collection, 
@@ -109,4 +114,49 @@ class AdminCompanyService:
             "total": total_count,
             "page": page,
             "limit": limit
+        }
+        
+    async def update_company_status(self, company_id: str, action: str) -> dict:
+        """
+        ធ្វើបច្ចុប្បន្នភាពស្ថានភាពក្រុមហ៊ុនទៅជា Verified ឬ Rejected
+        """
+        try:
+            comp_oid = ObjectId(company_id)
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ទម្រង់ Company ID មិនត្រឹមត្រូវទេ")
+
+        # កំណត់ទិន្នន័យដែលត្រូវ Update ផ្អែកលើ Action
+        now = datetime.now(timezone.utc)
+        
+        if action == "approve":
+            update_data = {
+                "is_verified": True,
+                "status": "verified",
+                "updated_at": now
+            }
+        elif action == "reject":
+            update_data = {
+                "is_verified": False,
+                "status": "rejected",
+                "updated_at": now
+            }
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="សកម្មភាពមិនត្រឹមត្រូវ")
+
+        # ធ្វើការ Update ចូលទៅក្នុង Database
+        result = await company_profiles_collection.update_one(
+            {"_id": comp_oid},
+            {"$set": update_data}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="រកមិនឃើញក្រុមហ៊ុននេះទេ")
+
+        # (ជម្រើសបន្ថែម) ទីនេះអ្នកអាចហៅ Notification Service ដើម្បីបាញ់ Noti ទៅប្រាប់ Employer ថាគណនីគាត់ត្រូវបាន Approve/Reject ក៏បាន
+
+        return {
+            "company_id": company_id,
+            "action": action,
+            "new_status": update_data["status"],
+            "is_verified": update_data["is_verified"]
         }

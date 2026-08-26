@@ -74,3 +74,25 @@ async def update_company_status_route(
         message=f"Company status successfully updated to {action}",
         data=None
     )
+    
+@router.patch("/{company_id}/status", response_model=APIResponse)
+async def update_company_status_route(
+    company_id: str = Path(..., description="Object ID របស់ក្រុមហ៊ុន"),
+    action: str = Query(..., description="សកម្មភាព (ត្រូវវាយ: approve ឬ reject)")
+):
+    """Admin អនុម័ត (Approve) ឬ បដិសេធ (Reject) ក្រុមហ៊ុន"""
+    
+    if action not in ["approve", "reject"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Action must be either 'approve' or 'reject'"
+        )
+    
+    # 🎯 ហៅ Service ដែលយើងទើបសរសេរអម្បាញ់មិញ
+    result = await company_service.update_company_status(company_id, action)
+    
+    return APIResponse(
+        success=True,
+        message=f"Company status successfully updated to {action}",
+        data=result
+    )
